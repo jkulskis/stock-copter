@@ -1,0 +1,4 @@
+pytest
+PySide2
+requests
+pyyaml
