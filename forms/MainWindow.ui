@@ -10,6 +10,9 @@
     <height>521</height>
    </rect>
   </property>
+  <property name="contextMenuPolicy">
+   <enum>Qt::DefaultContextMenu</enum>
+  </property>
   <property name="windowTitle">
    <string>Stock Copter</string>
   </property>
@@ -37,9 +40,40 @@
     </item>
     <item row="1" column="0" colspan="2">
      <widget class="QTreeWidget" name="treeWidget">
+      <property name="font">
+       <font>
+        <family>Garuda</family>
+        <pointsize>11</pointsize>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="animated">
+       <bool>true</bool>
+      </property>
+      <property name="expandsOnDoubleClick">
+       <bool>true</bool>
+      </property>
+      <attribute name="headerCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
       <column>
        <property name="text">
-        <string notr="true">1</string>
+        <string notr="true">Stock</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Price</string>
        </property>
       </column>
      </widget>
@@ -55,6 +89,12 @@
      <height>23</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

@@ -1,4 +1,3 @@
-from util.stock import Stock
 import yaml
 import sys, os
 import re
@@ -15,22 +14,34 @@ class Config:
     @property
     def _filename(self):
         application_path = os.path.abspath(os.path.dirname(sys.argv[0]))
+        if 'stock-copter.py' not in os.listdir(application_path):
+            application_path = '' # when running tests, app path is the venv bin...just use data/ instead
         data_path = os.path.join(application_path, 'data')
         if not os.path.exists(data_path):
             os.mkdir(data_path)
         return os.path.join(data_path, 'config.yml')
 
+    def __getitem__(self, key):
+        return self._raw_settings[key]
+
     def _load_settings(self):
         refresh_time = 7 * 60 * 60 * 24 # refresh the cookie & crumb every 7 days
         try:
             _raw_settings = yaml.safe_load(open(self._filename, 'r'))
-            assert time.time() - _raw_settings['yahoo_v7_token']['timestamp'] < refresh_time
-        except (AssertionError, FileNotFoundError):
-            _raw_settings = {}
-            _raw_settings['yahoo_v7_token'] = self._grab_tokens()
+            if  time.time() - _raw_settings['yahoo_v7_token']['timestamp'] < refresh_time:
+                _raw_settings['yahoo_v7_token'] = self._grab_tokens()
+        except FileNotFoundError:
+            _raw_settings = dict.fromkeys(['stocks', 'preferences'])
         return _raw_settings
 
     def _grab_tokens(self):
+        """Grabs the cookie and crumb for the yahoo_v7 api. Only grab if current tokens are more than a week old
+
+        Courtesy of https://github.com/sjev/trading-with-python/blob/3.1.1/lib/yahooFinance.py
+        
+        Returns:
+            [dict] -- dictionary with the crumb, cookie, and timestamp
+        """
         url = 'https://uk.finance.yahoo.com/quote/AAPL/history' # url for a ticker symbol, with a download link
         r = requests.get(url)
         
@@ -55,11 +66,20 @@ class Config:
         return cookie, crumb
 
     def _parse_stocks(self):
-        return [Stock(ticker=ticker, **self._raw_settings['stocks'][ticker]) for ticker in self._raw_settings['stocks']]
+        if self._raw_settings['stocks']:
+            return [{ticker : self._raw_settings['stocks'][ticker]} for ticker in self._raw_settings['stocks']]
+        return {}
 
-    def dump_settings(self):
-        for stock in self.stocks:
-            save_info = stock.__dict__.copy()
-            save_info.pop('ticker') # use ticker as the key, so don't save it in the save_info
-            self._raw_settings['stocks'][stock.ticker] = save_info
+    def dump_settings(self, updated_stocks):
+        from util.stock import Stock
+        self._raw_settings['stocks'] = {}
+        save_stock_keys = ['group', 'shares'] # Only save these stock attributes in the config
+        for stock in updated_stocks:
+            stock_dict = {stock.ticker : {}}
+            for key in stock.__dict__:
+                if key in save_stock_keys and getattr(stock, key): # Don't save one of the attributes if it is null
+                    stock_dict[stock.ticker][key] = getattr(stock, key)
+            self._raw_settings['stocks'].update(stock_dict)
         yaml.dump(self._raw_settings, open(self._filename, 'w'))
+
+conf = Config()
