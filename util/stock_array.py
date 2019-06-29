@@ -22,7 +22,7 @@ class StockArray:
             self.index += 1
             return self.stocks[self.index - 1]
 
-    def get_prices(self):
+    def update_price(self):
         if self.stocks:
             ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
             # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
@@ -32,45 +32,45 @@ class StockArray:
                 self.stocks[ii].currentPrice = data[ii]['price']
             return 0
 
-    def get_financials(self):
+    def update_financials(self):
         for stock in self.stocks:
-            stock.get_financials()
+            stock.update_financials()
         return 0
     
-    def get_key_stats(self):
+    def update_key_stats(self):
         for stock in self.stocks:
-            stock.get_key_stats()
+            stock.update_key_stats()
         return 0
     
-    def get_v10(self, modules):
-        for stock in self.stocks:
-            stock.get_v10(modules)
+    def update_v10(self, modules=None):
+        if modules:
+            for stock in self.stocks:
+                stock.update_v10(modules)
+        else:
+            for stock in self.stocks:
+                stock.update_v10()
         return 0
-    
-    def get_v10(self):
-        for stock in self.stocks:
-            stock.get_v10(['financialData', 'defaultKeyStatistics'])
 
-    def get_daily(self):
+    def update_daily(self):
         for stock in self.stocks:
-            stock.get_daily()
+            stock.update_daily()
     
-    def get_historical_year(self):
+    def update_historical(self, timeframe=1, check_previous=False):
         for stock in self.stocks:
-            stock.get_historical_year()
+            stock.update_historical(timeframe, check_previous)
 
-    # def get_historical(self):
+    # def update_historical(self):
 
     def update_recent(self):
         if not self.last_refresh or time.time() - self.last_refresh > self.data_refresh:
-            self.get_v10()
-            self.get_daily()
+            self.update_v10()
+            self.update_daily()
             self.last_refresh = time.time()
             return 0 # everything updated
         return int(time.time() - self.last_refresh) # not enough time has passed since the last update, so keep previous data
 
     def update_all(self):
-        self.get_v10()
-        self.get_daily()
-        self.get_historical_year()
+        self.update_v10()
+        self.update_daily()
+        self.update_historical()
         self.last_refresh = time.time()

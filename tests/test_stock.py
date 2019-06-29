@@ -14,32 +14,31 @@ def create_stock_array():
     stock_array = StockArray(stocks=stocks)
     return stock_array
 
-def print_attr(stock, attribute_list=None):
-    attribute_list = stock.variable_attr if not attribute_list else getattr(stock, attribute_list)
-    print('\n----------{0}----------\n'.format(stock.ticker))
-    for attr in attribute_list:
-        print(attr, ':', stock.attr_str(attr))
+def print_attr_list(stock, attribute_list=None):
+	attribute_list = stock.variable_attr if not attribute_list else getattr(stock, attribute_list)
+	print('\n----------{0}----------\n'.format(stock.ticker))
+	for attr in attribute_list:
+		print(attr, ':', stock.attr_str(attr))
 
-def test_stock_array_get_prices():
+def test_update_price():
     stock_array = create_stock_array()
-    stock_array.get_prices()
+    stock_array.update_price()
     for stock in stock_array:
-        print_attr(stock)
+        print_attr_list(stock)
 
-def test_stock_array_get_financials():
+def test_update_financial_data():
     stock_array = create_stock_array()
-    stock_array.get_v10('financialData')
+    stock_array.update_v10('financialData')
     for stock in stock_array:
-        print_attr(stock)
+        print_attr_list(stock)
 
-def test_stock_array_get_key_stats():
+def test_update_key_stats():
     stock_array = create_stock_array()
-    stock_array.get_v10('defaultKeyStatistics')
+    stock_array.update_v10('defaultKeyStatistics')
     for stock in stock_array.stocks:
-        print(stock.ticker + 'wdhwidhiwod')
-        print_attr(stock)
+        print_attr_list(stock)
 
-def test_stock_array_update_recent():
+def test_update_recent():
     stock_array = create_stock_array()
     requests = 1
     for ii in range(0,requests):
@@ -51,30 +50,45 @@ def test_stock_array_update_recent():
         if requests != 1:
             time.sleep(1)
     for stock in stock_array:
-        print_attr(stock)
+        print_attr_list(stock)
 
-def test_stock_array_update_all():
+def test_update_all():
     stock_array = create_stock_array()
     stock_array.update_all()
     for stock in stock_array:
-        print_attr(stock)
+        print_attr_list(stock)
 
-def test_stock_array_get_daily():
+def test_update_daily():
     stock_array = create_stock_array()
-    stock_array.get_daily()
+    stock_array.update_daily()
     for stock in stock_array:
-        print_attr(stock, 'daily_attr')
+        print_attr_list(stock, 'daily_attr')
 
-def test_stock_array_get_historical_year():
+def test_update_historical():
 	stock_array = create_stock_array()
-	stock_array.get_historical_year()
+	stock_array.update_historical()
 	for stock in stock_array:
 		print('\n----------{0}----------\n'.format(stock.ticker))
-		print(stock.historical_year)
-		print('Dividends: ', stock.dividends)
-		print('52 Week Low: ', stock.fiftyTwoWeekLow)
-		print('52 Week High: ', stock.fiftyTwoWeekHigh)
+		# print(stock.historical)
+		print('Dividends:', stock.dividends)
+		print('52 Week Low:', stock.fiftyTwoWeekLow)
+		print('52 Week High:', stock.fiftyTwoWeekHigh)
+		print('200 Day MA:', stock.movingAverage200)
+		print('100 Day MA:', stock.movingAverage100)
+		print('50 Day MA:', stock.movingAverage50)
+		print('20 Day MA:', stock.movingAverage20)
+		print('5 Day MA:', stock.movingAverage5)
+		print('RSI:', stock.rsi)
 
+def test_format_number():
+	stock = Stock('AAPL')
+	numbers = [38000000023, '1007200', 1000020, 78000.293931, 1001.2324, 200, .23, 4.238237]
+	print('\n----------Formatted as String----------\n')
+	for number in numbers:
+		print(number, stock.format_number(number, string=True))
+	print('\n----------Formatted as Numeral----------\n')
+	for number in numbers:
+		print(number, stock.format_number(number))
 
 # def test_dividends():
 #     newest_time = 0
