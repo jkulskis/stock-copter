@@ -1,9 +1,126 @@
-from util.config import conf
 from datetime import datetime, timedelta
+from PySide2 import QtWidgets
+from util.config import conf
 import requests
 import time
+import re
+
+class Formatter:    
+    OPERATORS = ['+', '-', '*', '/', '%', '==', '!=', '>=', '<=', '=', '>', '<', 'IF', 'THEN']
+    COLORS = ['RED', 'GREEN']
+
+    @classmethod
+    def format_number(cls, number, string=False):
+        if isinstance(number, str):
+            try:
+                number = float(number)
+            except ValueError:
+                return number if string else None
+        if string:
+            if number >= 1000000000:
+                return '{0}B'.format(round(number/1000000000.0, 2))
+            elif number >= 1000000:
+                return '{0}M'.format(round(number/1000000.0, 2))
+            elif number >= 10000:
+                return '{:,}'.format(int(number))
+            elif number >= 1000:
+                return '{:,}'.format(round(number, 1))
+            elif number >= 10:
+                return '{:.2f}'.format(number)
+            elif number >= 1:
+                return '{:.3f}'.format(number)
+            else:
+                return str(number)
+        else:
+            if number >= 10000:
+                return int(number)
+            elif number >= 1000:
+                return round(number, 1)
+            elif number >= 10:
+                return round(number, 2)
+            elif number >= 1:
+                return round(number, 3)
+            else:
+                return number
+    
+    @classmethod
+    def split_eq(cls, eq):
+        split_ops = ['{0}'.format(op) if len(op) > 1 else '[{0}]'.format(op) for op in cls.OPERATORS + cls.COLORS]
+        split_raw = re.split(r"({0})".format("|".join(split_ops)), eq.replace(' ', ''), flags=re.IGNORECASE)
+        return ([item.upper() for item in list(filter(None, split_raw))], list(filter(None, split_raw)))
+
+    @classmethod
+    def check_eq(cls, eq, split=False):
+        if not eq:
+            return (False, "No equation entered")
+        if not split:
+            eq, eq_casing = cls.split_eq(eq)
+        if len(eq) == 1:
+            if eq[0] not in Stock.get_variables()[1] and eq[0] not in conf['custom_variables']:
+                return (False, "If only one argument is given, it must be a variable")
+        if eq[0] in cls.OPERATORS and eq[0] != 'IF' or eq[0] in cls.COLORS: 
+            return (False, "The first argument cannot be an operator unless it is 'IF'")
+        for ii in range(0, len(eq)):
+            if eq[ii] in cls.OPERATORS:
+                if eq[ii - 1] in cls.OPERATORS or ii > 0 and eq[ii] == 'IF':
+                    return (False, "Operators cannot be adjacent") # Two operators should never be side by side, and if should not be after the first value
+            elif eq[ii] in cls.COLORS:
+                if eq[ii - 1] in cls.COLORS:
+                    return False # Two colors should never be side by side
+                elif eq[ii - 1] != 'THEN':
+                    return (False, "The argument before a color should always be 'THEN'")
+            elif eq[ii] not in Stock.get_variables()[1] and eq[ii] not in conf['custom_variables']:
+                try:
+                    int(eq[ii])
+                    if ii > 0:
+                        if eq[ii - 1] not in cls.OPERATORS:
+                            return (False, "Variables and/or Numerals cannot be adjacent")
+                except ValueError:
+                    return (False, "Invalid Variable: {0}".format(eq_casing[ii])) # anything that isn't a variable should be a numeral
+        if 'IF' in eq and 'THEN' not in eq:
+            return (False, "A conditional needs an 'IF' and a 'THEN'")
+        return (True, 'IF' in eq)
+
+    @classmethod
+    def evaluate_eq(cls, eq, stock=None, string=False):
+        eq, eq_casing = cls.split_eq(eq)
+        expression = ''
+        if len(eq) == 1:
+            expression = stock.attr_str(eq_casing[0])
+            if expression:
+                return expression
+            else:
+                return '-' if string else None
+        starting_index = 1 if 'IF' in eq else 0
+        for value in eq[starting_index:]:
+            if value == 'THEN':
+                break
+            elif value in cls.OPERATORS:
+                expression += value
+            else:
+                try:
+                    int(value)
+                    expression += value
+                except ValueError:
+                    try:
+                        index = Stock.get_variables()[1].index(value) # find the index in the uppercase list to get the corresponding version with correct casing
+                        v = stock.attr_num(Stock.get_variables()[0][index])
+                    except ValueError:
+                        v = conf['custom_variables'][value] # For now all custom variables are uppercase, so just grab it
+                    if not v:
+                        return '-' if string else None
+                    else:
+                        expression += str(v)
+        return str(eval(expression)) if string else eval(expression)
+
+            
+
+        
 
 class Stock:
+
+    VARIABLE_ATTR = [] # list of all the attributes in the class that can be used as variables
+    VARIABLE_ATTR_UPPER = [] # these are static, and we don't want to loop through to make upper every time so make a variable and only do it once
 
     def __init__(self, ticker=None, group=None, shares=None, **kwargs):
         self.ticker = ticker
@@ -47,7 +164,7 @@ class Stock:
         self.shortPercentOfFloat = None
         self.shortRatio = None
         self.trailingEps = None
-        self.v10_attr = list(self.__dict__.keys()) # include all attribute names above in this list
+        self.v10_attr = list(vars(self).keys()) # include all attribute names above in this list
         # yahoo v8 financials
         self.close = None
         self.high = None
@@ -71,48 +188,40 @@ class Stock:
         #------User Data------
         #---------------------
         self.shares = shares
-        self.variable_attr = [key for key in self.__dict__.keys() if not key in ['v10_attr', 'daily_attr', 'historical', 'historical_recent']]  # all of the above variables are valid for custom equations
-        self.variable_attr.sort()
-        self.group = group # put group last since we don't include this in variable_attr
+        self.group = group
+        self.widget = None
+
+    @classmethod
+    def get_variables(cls):
+        if not cls.VARIABLE_ATTR:
+            cls.VARIABLE_ATTR = [key for key in list(vars(Stock()).keys()) if not key in ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget']]
+            cls.VARIABLE_ATTR.sort()
+            cls.VARIABLE_ATTR_UPPER = [variable.upper() for variable in cls.VARIABLE_ATTR]
+        return cls.VARIABLE_ATTR, cls.VARIABLE_ATTR_UPPER
 
     def attr_str(self, attr):
         attr = getattr(self, attr)
         if isinstance(attr, tuple):
             return attr[1] if attr[1] else attr[0] # only return fmt version if it is not None
+        elif attr:
+            return Formatter.format_number(attr, string=True)
         else:
-            return str(attr)
+            return None
     
-    def format_number(self, number, string=False):
-        if isinstance(number, str):
-            number = float(number)
-        if string:
-            if number >= 1000000000:
-                return '{0}B'.format(round(number/1000000000.0, 2))
-            elif number >= 1000000:
-                return '{0}M'.format(round(number/1000000.0, 2))
-            elif number >= 10000:
-                return '{:,}'.format(int(number))
-            elif number >= 1000:
-                return '{:,}'.format(round(number, 3))
-            elif number >= 1:
-                return str(round(number, 2))
-            else:
-                return str(number)
+    def attr_num(self, attr):
+        attr = getattr(self, attr)
+        if isinstance(attr, tuple):
+            return Formatter.format_number(attr[0])
+        elif attr:
+            return Formatter.format_number(attr)
         else:
-            if number >= 10000:
-                return int(number)
-            elif number >= 1000:
-                return round(number, 2)
-            elif number >= 1:
-                return round(number, 3)
-            else:
-                return number
+            return None
 
     def get_price(self):
         self.currentPrice = float(requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(self.ticker)).json()[0]['price'])
         return self.currentPrice
         
-    def parse_yahoo_data(self, module, key):
+    def parse_v10_data(self, module, key):
         if key in module:
             if 'raw' in module[key]:
                 return (module[key]['raw'], module[key]['fmt'])
@@ -121,6 +230,11 @@ class Stock:
         else:
             return None
     
+    # takes ~200-300ms with good wifi
+    def update_all(self):
+        self.update_v10()
+        self.update_historical()
+
     # possible modules that we are using are financialData, defaultKeyStatistics
     def update_v10(self, modules=None):
         if isinstance(modules, str):
@@ -136,13 +250,15 @@ class Stock:
             for module, value in data.items():
                 for key in value:
                     if key in self.v10_attr:
-                        setattr(self, key, self.parse_yahoo_data(value, key))
+                        setattr(self, key, self.parse_v10_data(value, key))
             return 0
         else:
             return 1
     
     def update_daily(self):
-        url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={1}&interval=1d'.format(self.ticker, int(time.time()))
+        url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval=1d' \
+                .format(self.ticker, int((datetime.now() - timedelta(days=4)).timestamp()), int(time.time())) # go 4 days in the passed to account for weekends + holidays
+        print(url)
         data = requests.get(url).json()
         if 'chart' in data:
             data = data['chart'] if not data['chart']['error'] else None
@@ -150,7 +266,7 @@ class Stock:
             data = data['result'][0]['indicators']['quote'][0]
             for k, v in data.items():
                 if k in self.daily_attr:
-                    setattr(self, k, self.format_number(float(v[0])))
+                    setattr(self, k, Formatter.format_number(float(v[-1])))
             return 0
         else:
             return 1
@@ -167,8 +283,11 @@ class Stock:
         if data:
             data = data['result'][0]
             self.historical['timestamp'] = list(map(int, data['timestamp']))
-            for k, v in data['indicators']['quote'][0].items():
-                self.historical['price_data'][k] = [self.format_number(float(d)) for d in v]
+            self.historical['price_data']['adjclose'] = list(map(Formatter.format_number, data['indicators']['adjclose'][0]['adjclose']))
+            for k, v in data['indicators']['quote'][0].items(): # set the daily attributes to so that we don't have to do another request
+                if k in self.daily_attr:
+                    setattr(self, k, Formatter.format_number(float(v[-1])))
+                self.historical['price_data'][k] = [Formatter.format_number(float(d)) for d in v]
             if 'events' in data and 'dividends' in data['events']: # really only need events key check, but I may decide to use splits as an event later
                 latest_timestamp = 0
                 for k, v in data['events']['dividends'].items():
@@ -225,45 +344,37 @@ class Stock:
             else:
                 break
         if self.movingAverage200:
-            self.movingAverage200 = self.format_number(self.movingAverage200 / 200)
+            self.movingAverage200 = Formatter.format_number(self.movingAverage200 / 200)
         if self.movingAverage100:
-            self.movingAverage100 = self.format_number(self.movingAverage100 / 100)
+            self.movingAverage100 = Formatter.format_number(self.movingAverage100 / 100)
         if self.movingAverage50:
-            self.movingAverage50 = self.format_number(self.movingAverage50 / 50)
+            self.movingAverage50 = Formatter.format_number(self.movingAverage50 / 50)
         if self.movingAverage20:
-            self.movingAverage20 = self.format_number(self.movingAverage20 / 20)
+            self.movingAverage20 = Formatter.format_number(self.movingAverage20 / 20)
         if self.movingAverage5:
-            self.movingAverage5 = self.format_number(self.movingAverage5 / 5)
+            self.movingAverage5 = Formatter.format_number(self.movingAverage5 / 5)
     
     def update_rsi(self, days=14):
-        open_prices = []
         close_prices = []
-        data_points = len(self.historical['price_data']['close'])
-        for ii in range(data_points - 1, data_points - days - 1, -1):
+        data_points = len(self.historical['price_data']['adjclose'])
+        for ii in range(data_points - 1, data_points - days - 2, -1): # highest index has most recent data
             if ii < 0:
                 self.rsi = None
                 return 0
-            open_prices.append(self.historical['price_data']['open'][ii])
-            close_prices.append(self.historical['price_data']['close'][ii])
-        print(len(open_prices), len(close_prices))
+            close_prices.append(self.historical['price_data']['adjclose'][ii])
         previous_gain = 0
         previous_loss = 0
-        for ii in range(0, days):
-            if close_prices[ii] > open_prices[ii]:
-                previous_gain += (close_prices[ii] - open_prices[ii])
+        for ii in range(1, days + 1): # lowest index has most recent data
+            if close_prices[ii - 1] > close_prices[ii]:
+                previous_gain += (close_prices[ii - 1] - close_prices[ii])
             else:
-                previous_loss += (open_prices[ii] - close_prices[ii])
-        if close_prices[0] > open_prices[0]:
-            current_gain = (close_prices[0] - open_prices[0])
+                previous_loss -= (close_prices[ii - 1] - close_prices[ii])
+        if close_prices[0] > close_prices[1]:
+            current_gain = (close_prices[0] - close_prices[1])
             current_loss = 0
         else:
-            current_loss = (open_prices[0] - close_prices[0])
+            current_loss = -(close_prices[0] - close_prices[1])
             current_gain = 0
-        previous_gain /= days
-        previous_loss /= days
-        print('Previous Gain:', previous_gain)
-        print('Previous Loss:', previous_loss)
-        smooth_rs_numerator = (previous_gain*(days - 1) + current_gain)/days
-        smooth_rs_denominator = ((previous_loss*(days - 1) + current_loss))/days
-        self.rsi = self.format_number(100 - 100/(1 + smooth_rs_numerator/smooth_rs_denominator))
-        #self.rsi = self.format_number(100 - 100/(1 + previous_gain/previous_loss))
+        smooth_rs_numerator = ((previous_gain / days)*(days - 1) + current_gain)/days
+        smooth_rs_denominator = ((previous_loss / days)*(days - 1) + current_loss)/days
+        self.rsi = Formatter.format_number(100 - 100/(1 + smooth_rs_numerator/smooth_rs_denominator))

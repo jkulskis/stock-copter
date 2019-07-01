@@ -27,7 +27,6 @@ class StockArray:
             ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
             # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
             data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
-            print(data)
             for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
                 self.stocks[ii].currentPrice = data[ii]['price']
             return 0
@@ -70,7 +69,5 @@ class StockArray:
         return int(time.time() - self.last_refresh) # not enough time has passed since the last update, so keep previous data
 
     def update_all(self):
-        self.update_v10()
-        self.update_daily()
-        self.update_historical()
-        self.last_refresh = time.time()
+        for stock in self.stocks:
+            stock.update_all()

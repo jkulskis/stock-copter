@@ -8,8 +8,12 @@ class Config:
 
     def __init__(self):
         self._raw_settings = self._load_settings()
-        self.cookie, self.crumb = self._parse_v7_token()
-        self.stocks = self._parse_stocks()
+        self.stocks = []
+        self.headers = {}
+        self.custom_variables = {}
+        self._parse_stocks()
+        self._parse_custom_variables()
+        self._parse_tree_view()
 
     @property
     def _filename(self):
@@ -28,53 +32,32 @@ class Config:
         refresh_time = 7 * 60 * 60 * 24 # refresh the cookie & crumb every 7 days
         try:
             _raw_settings = yaml.safe_load(open(self._filename, 'r'))
-            if  time.time() - _raw_settings['yahoo_v7_token']['timestamp'] < refresh_time:
-                _raw_settings['yahoo_v7_token'] = self._grab_tokens()
         except FileNotFoundError:
-            _raw_settings = dict.fromkeys(['stocks', 'preferences'])
+            _raw_settings = dict.fromkeys(['stocks', 'preferences', 'tree_view', 'custom_variables'])
         return _raw_settings
-
-    def _grab_tokens(self):
-        """Grabs the cookie and crumb for the yahoo_v7 api. Only grab if current tokens are more than a week old
-
-        Courtesy of https://github.com/sjev/trading-with-python/blob/3.1.1/lib/yahooFinance.py
-        
-        Returns:
-            [dict] -- dictionary with the crumb, cookie, and timestamp
-        """
-        url = 'https://uk.finance.yahoo.com/quote/AAPL/history' # url for a ticker symbol, with a download link
-        r = requests.get(url)
-        
-        txt = r.text # extract html
-        
-        cookie = r.cookies['B'] # the cooke we're looking for is named 'B'
-        
-        pattern = re.compile('.*"CrumbStore":\{"crumb":"(?P<crumb>[^"]+)"\}')
-        
-        for line in txt.splitlines():
-            m = pattern.match(line)
-            if m is not None:
-                crumb = m.groupdict()['crumb']   
-        
-        assert r.status_code == 200 # check for succesful download
-                
-        return {'crumb': crumb, 'cookie':cookie, 'timestamp':time.time()}
-    
-    def _parse_v7_token(self):
-        cookie = self._raw_settings['yahoo_v7_token']['cookie']
-        crumb = self._raw_settings['yahoo_v7_token']['crumb']
-        return cookie, crumb
 
     def _parse_stocks(self):
         if self._raw_settings['stocks']:
-            return [{ticker : self._raw_settings['stocks'][ticker]} for ticker in self._raw_settings['stocks']]
-        return {}
+            self.stocks = [ticker for ticker in self._raw_settings['stocks']] # Don't make stock objects here to avoid import loops
+        self.stocks = []
+    
+    def _parse_tree_view(self):
+        if 'tree_view' in self._raw_settings:
+            self.headers = self._raw_settings['tree_view']['headers']
+        else:
+            self.headers = [{'text' : 'Ticker', 'eq' : 'ticker'}, {'text' : 'Price', 'eq' : 'currentPrice'}]
+            self._raw_settings['tree_view'] = {'headers' : self.headers}
+    
+    def _parse_custom_variables(self):
+        if 'custom_variables' in self._raw_settings:
+            self.custom_variables = self._raw_settings['custom_variables']
+        else:
+            self._raw_settings['custom_variables'] = self.custom_variables
 
-    def dump_settings(self, updated_stocks):
-        from util.stock import Stock
+    def dump_settings(self):
         self._raw_settings['stocks'] = {}
         save_stock_keys = ['group', 'shares'] # Only save these stock attributes in the config
-        for stock in updated_stocks:
+        for stock in self.stocks:
             stock_dict = {stock.ticker : {}}
             for key in stock.__dict__:
                 if key in save_stock_keys and getattr(stock, key): # Don't save one of the attributes if it is null

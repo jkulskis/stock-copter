@@ -10,7 +10,7 @@ def test_current_price():
     assert stock.currentPrice is not None
 
 def create_stock_array():
-    stocks = [Stock('AAPL'), Stock('WORK'), Stock('SLAB')]
+    stocks = [Stock('AAPL'), Stock('WORK'), Stock('SLAB'), Stock('AAMC')]
     stock_array = StockArray(stocks=stocks)
     return stock_array
 
@@ -38,6 +38,12 @@ def test_update_key_stats():
     for stock in stock_array.stocks:
         print_attr_list(stock)
 
+def test_update_v10():
+    stock_array = create_stock_array()
+    stock_array.update_v10()
+    for stock in stock_array.stocks:
+        print_attr_list(stock)
+
 def test_update_recent():
     stock_array = create_stock_array()
     requests = 1
@@ -51,6 +57,11 @@ def test_update_recent():
             time.sleep(1)
     for stock in stock_array:
         print_attr_list(stock)
+
+def test_update_all_one():
+	stock = Stock('AAPL')
+	stock.update_all()
+	print_attr_list(stock)
 
 def test_update_all():
     stock_array = create_stock_array()
@@ -80,23 +91,5 @@ def test_update_historical():
 		print('5 Day MA:', stock.movingAverage5)
 		print('RSI:', stock.rsi)
 
-def test_format_number():
-	stock = Stock('AAPL')
-	numbers = [38000000023, '1007200', 1000020, 78000.293931, 1001.2324, 200, .23, 4.238237]
-	print('\n----------Formatted as String----------\n')
-	for number in numbers:
-		print(number, stock.format_number(number, string=True))
-	print('\n----------Formatted as Numeral----------\n')
-	for number in numbers:
-		print(number, stock.format_number(number))
-
-# def test_dividends():
-#     newest_time = 0
-#     dividends_value = 0
-#     dividends = {}
-#     for key in dividends:
-#         if int(key) > newest_time:
-#             newest_time = int(key)
-#             dividends_value = dividends[key]
-#     print('Time:', newest_time)
-#     print('Dividends:', dividends_value)
+def test_attr():
+	print(list(vars(Stock()).keys()))
