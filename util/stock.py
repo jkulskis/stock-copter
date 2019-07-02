@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from PySide2 import QtWidgets
 from util.config import conf
 import requests
 import time
@@ -55,9 +54,8 @@ class Formatter:
             return (False, "No equation entered")
         if not split:
             eq, eq_casing = cls.split_eq(eq)
-        if len(eq) == 1:
-            if eq[0] not in Stock.get_variables()[1] and eq[0] not in conf['custom_variables']:
-                return (False, "If only one argument is given, it must be a variable")
+        if len(eq) == 1 and eq[0] not in Stock.get_variables()[1] and eq[0] not in conf['custom_variables']:
+            return (False, "If only one argument is given, it must be a variable")
         if eq[0] in cls.OPERATORS and eq[0] != 'IF' or eq[0] in cls.COLORS: 
             return (False, "The first argument cannot be an operator unless it is 'IF'")
         for ii in range(0, len(eq)):
@@ -82,40 +80,70 @@ class Formatter:
         return (True, 'IF' in eq)
 
     @classmethod
-    def evaluate_eq(cls, eq, stock=None, string=False):
+    def evaluate_eq(cls, eq, stocks=None, string=False):
         eq, eq_casing = cls.split_eq(eq)
-        expression = ''
-        if len(eq) == 1:
-            expression = stock.attr_str(eq_casing[0])
-            if expression:
-                return expression
-            else:
-                return '-' if string else None
+        if type(stocks) == Stock:
+            stocks = [stocks] # if not a stock array, then just make a temp array out of it
+        if len(eq) == 1: # if the equation is only one element, then the eval should just be a variable
+            evaluations = []
+            try:
+                index = Stock.get_variables()[1].index(eq[0])
+                for stock in stocks:
+                    evaluations.append(stock.attr_str(Stock.get_variables()[0][index])) # String value acceptable if only one variable
+            except ValueError:
+                try:
+                    v = cls.evaluate_eq(conf['custom_variables'][eq[0]], stocks=stocks) # For now all custom variables are uppercase, so just try to grab it directly
+                    evaluations.extend(v) if isinstance(v, list) else evaluations.append(v)
+                except KeyError:
+                    evaluations = ['NULL' if string else None for stock in stocks] # if a custom variable was deleted after being validated, we would end up here 
+                    return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one evaluation
+            if string:
+                evaluations = [str(v) if v else '-' for v in evaluations]
+            return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one expression
+        expressions = ['' for stock in stocks]
         starting_index = 1 if 'IF' in eq else 0
         for value in eq[starting_index:]:
             if value == 'THEN':
                 break
             elif value in cls.OPERATORS:
-                expression += value
+                for ii in range(len(expressions)):
+                    if expressions[ii] is not None:
+                        expressions[ii] += str(value)
             else:
                 try:
                     int(value)
-                    expression += value
+                    for ii in range(len(expressions)):
+                        if expressions[ii] is not None:
+                            expressions[ii] += str(value)
                 except ValueError:
                     try:
                         index = Stock.get_variables()[1].index(value) # find the index in the uppercase list to get the corresponding version with correct casing
-                        v = stock.attr_num(Stock.get_variables()[0][index])
+                        for ii in range(len(expressions)):
+                            v = stocks[ii].attr_num(Stock.get_variables()[0][index])
+                            if expressions[ii] is not None:
+                                if v:
+                                    expressions[ii] += str(v)
+                                else:
+                                    expressions[ii] = None
                     except ValueError:
-                        v = conf['custom_variables'][value] # For now all custom variables are uppercase, so just grab it
-                    if not v:
-                        return '-' if string else None
-                    else:
-                        expression += str(v)
-        return str(eval(expression)) if string else eval(expression)
-
-            
-
-        
+                        try:
+                            v = cls.evaluate_eq(conf['custom_variables'][value], stocks=stocks) # For now all custom variables are uppercase, so just try to grab it directly
+                            for ii in range(len(expressions)):
+                                if expressions[ii] is not None and v:
+                                    if isinstance(v, list):
+                                        expressions[ii] += str(v[ii])
+                                    else:
+                                        expressions[ii] += str(v)
+                                else:
+                                    expressions[ii] = None
+                        except KeyError:
+                            evaluations = ['NULL' if string else None for stock in stocks] # if a custom variable was deleted after being validated, we would end up here 
+                            return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one evaluation
+        if string:
+            evaluations =  ['-' if not exp else Formatter.format_number(eval(exp), string=True) for exp in expressions]
+        else:
+            evaluations =  [None if not exp else Formatter.format_number(eval(exp)) for exp in expressions]
+        return evaluations[0] if len(expressions) == 1 else evaluations # do not return as a list if only one expression
 
 class Stock:
 
@@ -188,7 +216,7 @@ class Stock:
         #------User Data------
         #---------------------
         self.shares = shares
-        self.group = group
+        self.group = group if group else 'Watchlist'
         self.widget = None
 
     @classmethod
@@ -218,7 +246,11 @@ class Stock:
             return None
 
     def get_price(self):
-        self.currentPrice = float(requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(self.ticker)).json()[0]['price'])
+        data = requests.get('https://financialmodelingprep.com/api/v3/stock/real-time-price/{0}'.format(self.ticker)).json()
+        if 'price' in data:
+            self.currentPrice = data['price'] # Not all of the symbols are updated on this API, so check to make sure it went through, and fallback to IEX
+        else:
+            self.currentPrice = float(requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(self.ticker)).json()[0]['price'])
         return self.currentPrice
         
     def parse_v10_data(self, module, key):

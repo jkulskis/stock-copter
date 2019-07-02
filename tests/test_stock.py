@@ -15,7 +15,7 @@ def create_stock_array():
     return stock_array
 
 def print_attr_list(stock, attribute_list=None):
-	attribute_list = stock.variable_attr if not attribute_list else getattr(stock, attribute_list)
+	attribute_list = Stock.get_variables()[0] if not attribute_list else getattr(stock, attribute_list)
 	print('\n----------{0}----------\n'.format(stock.ticker))
 	for attr in attribute_list:
 		print(attr, ':', stock.attr_str(attr))

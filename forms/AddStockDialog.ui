@@ -24,7 +24,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLineEdit" name="lineEdit">
+    <widget class="QLineEdit" name="lineEditTicker">
      <property name="placeholderText">
       <string>TICKER</string>
      </property>
@@ -66,7 +66,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLineEdit" name="lineEdit_2">
+      <widget class="QLineEdit" name="lineEditShares">
        <property name="readOnly">
         <bool>true</bool>
        </property>
@@ -76,7 +76,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEdit_3">
+      <widget class="QLineEdit" name="lineEditPrice">
        <property name="readOnly">
         <bool>true</bool>
        </property>
@@ -86,6 +86,13 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelError">
+     <property name="text">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error: Invalid Ticker&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -100,11 +107,11 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>lineEdit</tabstop>
+  <tabstop>lineEditTicker</tabstop>
   <tabstop>radioButtonWatchList</tabstop>
   <tabstop>radioButtonPortfolio</tabstop>
-  <tabstop>lineEdit_2</tabstop>
-  <tabstop>lineEdit_3</tabstop>
+  <tabstop>lineEditShares</tabstop>
+  <tabstop>lineEditPrice</tabstop>
  </tabstops>
  <resources/>
  <connections>

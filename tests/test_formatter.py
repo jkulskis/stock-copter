@@ -1,4 +1,6 @@
 from util.stock import Formatter, Stock
+from util.stock_array import StockArray
+from util.config import conf
 
 def test_format_number():
 	numbers = [38000000023, '1007200', 1000020, 78000.293931, 1001.2324, 200, .23, 4.238237]
@@ -25,11 +27,20 @@ def test_check_eq():
 def test_evaluate_eq():
     print('\n')
     stock = Stock('AAPL')
-    eqs = ['5*3/2+4', 'currentPrice*5<=10', '5    * 6 +   2 - 2', '', 'if 5 * 4 then 2', 'badString*2+5']
+    stock_array = StockArray([Stock('AAPL'), Stock('WORK'), Stock('SLAB')])
+    eqs = ['5*3/2+4', 'currentPrice*5<=10', '5    * 6 +   2 - 2', '', 'if 5 * 4 then 2', 'badString*2+5', '10*10/2', 'volume', 'variable+2']
     for eq in eqs:
         check = Formatter.check_eq(eq)
         if check[0]:
-            print(Formatter.evaluate_eq(eq, stock=stock))
+            print(eq, '~', Formatter.evaluate_eq(eq, stocks=stock))
         else:
             print(eq, '~', check[1])
-            
+    #stock_array.update_price()
+    stock_array.update_all()
+    conf['custom_variables']['VARIABLE'] = 'currentPrice/10+2'
+    for eq in eqs:
+        check = Formatter.check_eq(eq)
+        if check[0]:
+            print(eq, '~', Formatter.evaluate_eq(eq, stocks=stock_array, string=True))
+        else:
+            print(eq, '~', check[1])

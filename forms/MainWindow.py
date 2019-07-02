@@ -4,6 +4,7 @@ from util.stock import Stock
 from util.stock_array import StockArray
 from util.stock import Formatter
 from forms.MainWindowUI import Ui_MainWindow
+from forms.AddStockDialog import AddStockDialog
 
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -16,8 +17,12 @@ class MainWindow(QtWidgets.QMainWindow):
         #---------------------
         self.headers = conf.headers
         self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
+        #---------------------
+        #----Other Dialogs----
+        #---------------------
+        
         #--------------------
-        #------UI Setup------
+        #---Main UI Setup----
         #--------------------
         self.headerItem = self.ui.treeWidget.headerItem()
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
@@ -26,12 +31,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.watch_tree.setText(0, 'Watchlist')
         self.populate_tree_view()
         self.ui.treeWidget.expandAll()
+        self.update_actions()
     
     def closeEvent(self, event):
         conf.stocks = self.stocks
         conf.dump_settings() # dump settings before quitting
     
+    def update_actions(self):
+        self.ui.actionAdd_Stock.triggered.connect(self.add_stock)
+    
+    def add_stock(self):
+        add_stock_dialog = AddStockDialog(self.stocks)
+        if add_stock_dialog.exec_():
+            self.populate_tree_view()
+
+    def clear_tree_view(self):
+        root = self.ui.treeWidget.invisibleRootItem()
+        child_count = root.childCount()
+        for ii in range(child_count):
+            root.child(ii).takeChildren()
+
     def populate_tree_view(self):
+        self.clear_tree_view()
         for stock in self.stocks:
             if stock.group == 'Portfolio':
                 stock.widget = QtWidgets.QTreeWidgetItem(self.portfolio_tree)
@@ -45,8 +66,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stocks.update_price()
         # self.headerItem.columnCount()
         for ii in range(len(self.headers)):
-            for stock in self.stocks:
-                stock.widget.setText(ii, Formatter.evaluate_eq(self.headers[ii]['eq'], stock=stock, string=True))
-        # self.ui.treeWidget.headerItem().setText(1, "Price")
-        # print(self.ui.treeWidget.headerItem().getText(1))
-        # print (stock.widget.setText)
+            values = Formatter.evaluate_eq(self.headers[ii]['eq'], stocks=self.stocks, string=True)
+            for jj in range(len(self.stocks)):
+                self.stocks[jj].widget.setText(ii, values[jj])
+            #self.stocks[0].widget.setBackground(0, self.color(color='RED'))
+            evaluations = Formatter.evaluate_eq(self.headers[ii]['eq'], stocks=self.stocks, string=True)
+            self.stocks.populate_widgets(column=ii, evaluations=evaluations)
+    
+    def color(self, r=255, g=255, b=255, color=None):
+        if not color:
+            return QtGui.QBrush(QtGui.QColor(r, g, b))
+        else:
+            if color == 'RED':
+                return QtGui.QBrush(QtGui.QColor(255, 0, 0))

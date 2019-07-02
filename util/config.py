@@ -27,6 +27,10 @@ class Config:
 
     def __getitem__(self, key):
         return self._raw_settings[key]
+    
+    def __setitem__(self, key, value):
+        print('hehehhehe')
+        self._raw_settings[key] = value
 
     def _load_settings(self):
         refresh_time = 7 * 60 * 60 * 24 # refresh the cookie & crumb every 7 days

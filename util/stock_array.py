@@ -22,13 +22,47 @@ class StockArray:
             self.index += 1
             return self.stocks[self.index - 1]
 
-    def update_price(self):
+    def __add__(self, value):
+        if type(value) == Stock:
+            self.stocks.append(value)
+            return True
+        else:
+            return False
+
+    def __getitem__(self, index):
+        return self.stocks[index]
+
+    def __setitem__(self, index, value):
+        if type(value) == Stock:
+            self.stocks[index] = value
+            return True
+        else:
+            return False
+    
+    def __delitem__(self, index):
+        del self.stocks[index]
+
+    def __len__(self):
+        return len(self.stocks)
+    
+    def pop(self, index):
+        return self.stocks.pop(index)
+
+    def update_price(self, iex=True):
         if self.stocks:
-            ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
-            # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
-            data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
-            for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
-                self.stocks[ii].currentPrice = data[ii]['price']
+            if iex: # iex data found to be innacurate sometimes, so may use the other (slower) api for gathering multiple symbols
+                ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
+                # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
+                data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
+                for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
+                    self.stocks[ii].currentPrice = data[ii]['price']
+            else:
+                data = requests.get('https://financialmodelingprep.com/api/v3/company/stock/list').json()
+                for stock in self.stocks:
+                    for item in data['symbolsList']:
+                        if item['symbol'] == stock.ticker:
+                            stock.currentPrice = item['price']
+                            break 
             return 0
 
     def update_financials(self):
@@ -71,3 +105,8 @@ class StockArray:
     def update_all(self):
         for stock in self.stocks:
             stock.update_all()
+    
+    def populate_widgets(self, column=None, evaluations=None):
+        for ii in range(len(self.stocks)):
+            if self.stocks[ii].widget:
+                self.stocks[ii].widget.setText(column, evaluations[ii])
