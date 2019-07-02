@@ -29,7 +29,6 @@ class Config:
         return self._raw_settings[key]
     
     def __setitem__(self, key, value):
-        print('hehehhehe')
         self._raw_settings[key] = value
 
     def _load_settings(self):
@@ -37,7 +36,7 @@ class Config:
         try:
             _raw_settings = yaml.safe_load(open(self._filename, 'r'))
         except FileNotFoundError:
-            _raw_settings = dict.fromkeys(['stocks', 'preferences', 'tree_view', 'custom_variables'])
+            _raw_settings = dict.fromkeys(['stocks', 'preferences', 'tree_view', 'custom_variables'], {})
         return _raw_settings
 
     def _parse_stocks(self):
@@ -46,7 +45,7 @@ class Config:
         self.stocks = []
     
     def _parse_tree_view(self):
-        if 'tree_view' in self._raw_settings:
+        if 'headers' in self._raw_settings['tree_view']:
             self.headers = self._raw_settings['tree_view']['headers']
         else:
             self.headers = [{'text' : 'Ticker', 'eq' : 'ticker'}, {'text' : 'Price', 'eq' : 'currentPrice'}]

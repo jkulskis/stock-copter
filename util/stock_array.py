@@ -5,9 +5,10 @@ import time
 
 class StockArray:
 
-    def __init__(self, stocks=None):
+    def __init__(self, stocks=[]):
         self.stocks = stocks
-        self.data_refresh = conf['preferences']['data_refresh']
+        if conf['preferences']:
+            self.data_refresh = conf['preferences']['data_refresh']
         self.last_refresh = None
         self.index = 0
     
@@ -15,7 +16,7 @@ class StockArray:
         return self
 
     def __next__(self):
-        if self.index == len(self.stocks):
+        if self.index == len(self):
             self.index = 0
             raise StopIteration
         else:
@@ -43,7 +44,10 @@ class StockArray:
         del self.stocks[index]
 
     def __len__(self):
-        return len(self.stocks)
+        if not self.stocks:
+            return 0
+        else:
+            return len(self.stocks)
     
     def pop(self, index):
         return self.stocks.pop(index)
@@ -107,6 +111,6 @@ class StockArray:
             stock.update_all()
     
     def populate_widgets(self, column=None, evaluations=None):
-        for ii in range(len(self.stocks)):
+        for ii in range(len(self)):
             if self.stocks[ii].widget:
                 self.stocks[ii].widget.setText(column, evaluations[ii])

@@ -16,7 +16,10 @@ class MainWindow(QtWidgets.QMainWindow):
         #-----Config Data-----
         #---------------------
         self.headers = conf.headers
-        self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
+        if conf['stocks']:
+            self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
+        else:
+            self.stocks = StockArray()
         #---------------------
         #----Other Dialogs----
         #---------------------
@@ -66,12 +69,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stocks.update_price()
         # self.headerItem.columnCount()
         for ii in range(len(self.headers)):
-            values = Formatter.evaluate_eq(self.headers[ii]['eq'], stocks=self.stocks, string=True)
-            for jj in range(len(self.stocks)):
-                self.stocks[jj].widget.setText(ii, values[jj])
-            #self.stocks[0].widget.setBackground(0, self.color(color='RED'))
             evaluations = Formatter.evaluate_eq(self.headers[ii]['eq'], stocks=self.stocks, string=True)
-            self.stocks.populate_widgets(column=ii, evaluations=evaluations)
+            if isinstance(evaluations, str):
+                evaluations = [evaluations]
+            self.stocks.populate_widgets(column=ii, evaluations=evaluations) 
+            #self.stocks[0].widget.setBackground(0, self.color(color='RED'))
     
     def color(self, r=255, g=255, b=255, color=None):
         if not color:
