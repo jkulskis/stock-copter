@@ -4,9 +4,10 @@ import requests
 import time
 import re
 
-class Formatter:    
+class Formatter: 
+    CONDITIONALS_SPACING = ['IF ', 'THEN ']
     OPERATORS = ['+', '-', '*', '/', '%', '==', '!=', '>=', '<=', '=', '>', '<', 'IF', 'THEN']
-    COLORS = ['RED', 'GREEN']
+    COLORS = ['Color.RED', 'Color.GREEN']
 
     @classmethod
     def format_number(cls, number, string=False):
@@ -44,16 +45,19 @@ class Formatter:
     
     @classmethod
     def split_eq(cls, eq):
-        split_ops = ['{0}'.format(op) if len(op) > 1 else '[{0}]'.format(op) for op in cls.OPERATORS + cls.COLORS]
-        split_raw = re.split(r"({0})".format("|".join(split_ops)), eq.replace(' ', ''), flags=re.IGNORECASE)
-        return ([item.upper() for item in list(filter(None, split_raw))], list(filter(None, split_raw)))
+        split_ops = ['{0}'.format(op) if len(op) > 1 else '[{0}]'.format(op) for op in cls.OPERATORS[:-2] + cls.CONDITIONALS_SPACING + cls.COLORS]
+        split_raw = re.split(r"({0})".format("|".join(split_ops)), eq.replace('(', '').replace(')', ''), flags=re.IGNORECASE)
+        return ([item.upper().replace(' ', '') for item in list(filter(None, split_raw))], list(filter(None, split_raw)))
 
     @classmethod
-    def check_eq(cls, eq, split=False):
+    def check_eq(cls, eq, split=False, conditional=False):
         if not eq:
             return (False, "No equation entered")
         if not split:
             eq, eq_casing = cls.split_eq(eq)
+        print(eq)
+        if conditional and 'IF' not in eq and 'THEN' not in eq:
+            return (False, "'IF' and 'THEN' needed as arguments in a conditional statement")
         if len(eq) == 1 and eq[0] not in Stock.get_variables()[1] and eq[0] not in conf['custom_variables']:
             return (False, "If only one argument is given, it must be a variable")
         if eq[0] in cls.OPERATORS and eq[0] != 'IF' or eq[0] in cls.COLORS: 
@@ -101,7 +105,7 @@ class Formatter:
                 evaluations = [str(v) if v else '-' for v in evaluations]
             return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one expression
         expressions = ['' for stock in stocks]
-        starting_index = 1 if 'IF' in eq else 0
+        starting_index = 1 if conditional else 0
         for value in eq[starting_index:]:
             if value == 'THEN':
                 break

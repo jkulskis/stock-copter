@@ -5,6 +5,7 @@ from util.stock_array import StockArray
 from util.stock import Formatter
 from forms.MainWindowUI import Ui_MainWindow
 from forms.AddStockDialog import AddStockDialog
+from forms.ExpressionCreatorDialog import ExpressionCreatorDialog
 
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -15,7 +16,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #---------------------
         #-----Config Data-----
         #---------------------
-        self.headers = conf.headers
+        self.headers = conf['tree_view']['headers']
         if conf['stocks']:
             self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
         else:
@@ -23,7 +24,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #---------------------
         #----Other Dialogs----
         #---------------------
-        
+
         #--------------------
         #---Main UI Setup----
         #--------------------
@@ -42,17 +43,59 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def update_actions(self):
         self.ui.actionAdd_Stock.triggered.connect(self.add_stock)
+        self.ui.actionCreate_Expression.triggered.connect(self.add_expression)
+        self.ui.treeWidget.itemSelectionChanged.connect(self.selection_changed)
+        self.ui.treeWidget.customContextMenuRequested.connect(self.treeWidget_context_menu)
     
     def add_stock(self):
         add_stock_dialog = AddStockDialog(self.stocks)
         if add_stock_dialog.exec_():
             self.populate_tree_view()
+    
+    def add_expression(self, event):
+        expression_creator_dialog = ExpressionCreatorDialog()
+        if expression_creator_dialog.exec_():
+            print(1)
+        else:
+            print(0)
+
+    def selection_changed(self):
+        for item in self.ui.treeWidget.selectedItems():
+            if not item.parent():
+                item.setSelected(False)
+
+    def get_selected(self):
+        selected_items = []
+        for stock in self.stocks:
+            if stock.widget.isSelected():
+                selected_items.append({'widget' : stock.widget, 'stock' : stock})
+        return selected_items
+
+    def remove_stock(self):
+        items = self.get_selected()
+        for item in items:
+            item['widget'].parent().removeChild(item['widget'])
+            self.stocks.remove(item['stock'])
 
     def clear_tree_view(self):
         root = self.ui.treeWidget.invisibleRootItem()
         child_count = root.childCount()
         for ii in range(child_count):
             root.child(ii).takeChildren()
+
+    def treeWidget_context_menu(self, event):
+        
+        menu = QtWidgets.QMenu(self.ui.treeWidget)
+        remove_stock = QtWidgets.QAction("Remove Stock")
+        add_stock = QtWidgets.QAction("Add Stock")
+        menu.addAction(add_stock)
+        if self.get_selected():
+            menu.addAction(remove_stock)
+        action = menu.exec_(QtGui.QCursor.pos())
+        if action == remove_stock:
+            self.remove_stock()
+        elif action == add_stock:
+            self.add_stock()
 
     def populate_tree_view(self):
         self.clear_tree_view()
@@ -81,3 +124,4 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             if color == 'RED':
                 return QtGui.QBrush(QtGui.QColor(255, 0, 0))
+

@@ -84,11 +84,23 @@
         <bold>false</bold>
        </font>
       </property>
+      <property name="contextMenuPolicy">
+       <enum>Qt::CustomContextMenu</enum>
+      </property>
       <property name="autoFillBackground">
        <bool>false</bool>
       </property>
+      <property name="dragEnabled">
+       <bool>false</bool>
+      </property>
+      <property name="dragDropMode">
+       <enum>QAbstractItemView::NoDragDrop</enum>
+      </property>
       <property name="alternatingRowColors">
        <bool>true</bool>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::ExtendedSelection</enum>
       </property>
       <property name="sortingEnabled">
        <bool>true</bool>
@@ -120,6 +132,8 @@
      <string>File</string>
     </property>
     <addaction name="actionAdd_Stock"/>
+    <addaction name="actionEdit_Headers"/>
+    <addaction name="actionCreate_Expression"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -127,6 +141,16 @@
   <action name="actionAdd_Stock">
    <property name="text">
     <string>Add Stock</string>
+   </property>
+  </action>
+  <action name="actionEdit_Headers">
+   <property name="text">
+    <string>Edit Headers</string>
+   </property>
+  </action>
+  <action name="actionCreate_Expression">
+   <property name="text">
+    <string>Create Expression</string>
    </property>
   </action>
  </widget>

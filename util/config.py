@@ -8,18 +8,13 @@ class Config:
 
     def __init__(self):
         self._raw_settings = self._load_settings()
-        self.stocks = []
-        self.headers = {}
-        self.custom_variables = {}
-        self._parse_stocks()
-        self._parse_custom_variables()
-        self._parse_tree_view()
+        self._check_all_settings()
 
     @property
     def _filename(self):
         application_path = os.path.abspath(os.path.dirname(sys.argv[0]))
         if 'stock-copter.py' not in os.listdir(application_path):
-            application_path = '' # when running tests, app path is the venv bin...just use data/ instead
+            application_path = '' # when running tests, app path is the venv bin...just use 'data/' instead
         data_path = os.path.join(application_path, 'data')
         if not os.path.exists(data_path):
             os.mkdir(data_path)
@@ -36,26 +31,32 @@ class Config:
         try:
             _raw_settings = yaml.safe_load(open(self._filename, 'r'))
         except FileNotFoundError:
-            _raw_settings = dict.fromkeys(['stocks', 'preferences', 'tree_view', 'custom_variables'], {})
+            _raw_settings = {}
         return _raw_settings
+    
+    def _check_all_settings(self):
+        self._check_stocks()
+        self._check_tree_view()
+        self._check_custom_variables()
+        self._check_preferences()
 
-    def _parse_stocks(self):
-        if self._raw_settings['stocks']:
-            self.stocks = [ticker for ticker in self._raw_settings['stocks']] # Don't make stock objects here to avoid import loops
-        self.stocks = []
+    def _check_stocks(self):
+        if not 'stocks' in self._raw_settings:
+            self._raw_settings['stocks'] = {}
     
-    def _parse_tree_view(self):
-        if 'headers' in self._raw_settings['tree_view']:
-            self.headers = self._raw_settings['tree_view']['headers']
-        else:
-            self.headers = [{'text' : 'Ticker', 'eq' : 'ticker'}, {'text' : 'Price', 'eq' : 'currentPrice'}]
-            self._raw_settings['tree_view'] = {'headers' : self.headers}
+    def _check_tree_view(self):
+        if not 'tree_view' in self._raw_settings:
+            self._raw_settings['tree_view'] = dict.fromkeys(['headers'])
+            self._raw_settings['tree_view']['headers'] = [{'text' : 'Ticker', 'eq' : 'ticker'}, {'text' : 'Price', 'eq' : 'currentPrice'}]
     
-    def _parse_custom_variables(self):
-        if 'custom_variables' in self._raw_settings:
-            self.custom_variables = self._raw_settings['custom_variables']
-        else:
-            self._raw_settings['custom_variables'] = self.custom_variables
+    def _check_custom_variables(self):
+        if not 'custom_variables' in self._raw_settings:
+            self._raw_settings['custom_variables'] = {}
+
+    def _check_preferences(self):
+        if not 'preferences' in self._raw_settings:
+            self._raw_settings['preferences'] = dict.fromkeys(['refresh_time'])
+            self._raw_settings['preferences']['refresh_time'] = 10
 
     def dump_settings(self):
         self._raw_settings['stocks'] = {}

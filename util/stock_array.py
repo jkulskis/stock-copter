@@ -8,7 +8,7 @@ class StockArray:
     def __init__(self, stocks=[]):
         self.stocks = stocks
         if conf['preferences']:
-            self.data_refresh = conf['preferences']['data_refresh']
+            self.refresh_time = conf['preferences']['refresh_time']
         self.last_refresh = None
         self.index = 0
     
@@ -23,9 +23,9 @@ class StockArray:
             self.index += 1
             return self.stocks[self.index - 1]
 
-    def __add__(self, value):
-        if type(value) == Stock:
-            self.stocks.append(value)
+    def __add__(self, item):
+        if type(item) == Stock:
+            self.stocks.append(item)
             return True
         else:
             return False
@@ -33,9 +33,9 @@ class StockArray:
     def __getitem__(self, index):
         return self.stocks[index]
 
-    def __setitem__(self, index, value):
-        if type(value) == Stock:
-            self.stocks[index] = value
+    def __setitem__(self, index, item):
+        if type(item) == Stock:
+            self.stocks[index] = item
             return True
         else:
             return False
@@ -44,13 +44,16 @@ class StockArray:
         del self.stocks[index]
 
     def __len__(self):
-        if not self.stocks:
-            return 0
-        else:
+        if self.stocks:
             return len(self.stocks)
+        else:
+            return 0
     
     def pop(self, index):
         return self.stocks.pop(index)
+    
+    def remove(self, item):
+        self.stocks.remove(item)
 
     def update_price(self, iex=True):
         if self.stocks:
@@ -99,7 +102,7 @@ class StockArray:
     # def update_historical(self):
 
     def update_recent(self):
-        if not self.last_refresh or time.time() - self.last_refresh > self.data_refresh:
+        if not self.last_refresh or time.time() - self.last_refresh > self.refresh_time:
             self.update_v10()
             self.update_daily()
             self.last_refresh = time.time()
