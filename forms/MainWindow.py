@@ -28,19 +28,25 @@ class MainWindow(QtWidgets.QMainWindow):
         #--------------------
         #---Main UI Setup----
         #--------------------
+        self.portfolio_tree = None
+        self.watch_tree = None
+        self.headerView = None
+        self.setup_tree_widget()
+        self.update_actions()
+
+    def setup_tree_widget(self):
+        self.setup_header()
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.portfolio_tree.setText(0, 'Portfolio')
         self.watch_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.watch_tree.setText(0, 'Watchlist')
-        self.headerView = QtWidgets.QHeaderView(QtCore.Qt.Orientation.Horizontal)
-        self.setup_tree_widget()
-        self.setup_header()
-        self.update_actions()
-
-    def setup_tree_widget(self):
-        self.ui.treeWidget.reset()
         self.setup_header()
         self.populate_tree_view()
+    
+    def reset_ui(self):
+        self.ui.setupUi(self)
+        self.setup_tree_widget()
+        self.update_actions()
 
     def setup_header(self):
         self.headerView = QtWidgets.QHeaderView(QtCore.Qt.Orientation.Horizontal)
@@ -170,6 +176,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def headerView_context_menu(self, event):
         self.ui.treeWidget.clearSelection()
         logical_index = self.headerView.logicalIndexAt(event.x())
+        if logical_index == -1:
+            return
         menu = QtWidgets.QMenu(self.headerView)
         add_header = QtWidgets.QAction("Add Header")
         edit_header = QtWidgets.QAction("Edit Header")
@@ -191,8 +199,8 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def remove_header(self, index):
         del self.headers[index]
-        self.headerView.hideSection(index)
-        self.populate_tree_view()
+        self.reset_ui()
+        #self.populate_tree_view()
 
     def populate_tree_view(self):
         # self.ui.treeWidget.headerItem() = QtWidgets.QTreeWidgetItem
