@@ -1,153 +1,8 @@
 from datetime import datetime, timedelta
 from util.config import conf
+from util.format import Formatter
 import requests
 import time
-import re
-
-class Formatter: 
-    CONDITIONALS_SPACING = ['IF ', 'THEN ']
-    OPERATORS = ['+', '-', '*', '/', '%', '==', '!=', '>=', '<=', '=', '>', '<', 'IF', 'THEN']
-    COLORS = ['Color.RED', 'Color.GREEN']
-
-    @classmethod
-    def format_number(cls, number, string=False):
-        if isinstance(number, str):
-            try:
-                number = float(number)
-            except ValueError:
-                return number if string else None
-        if string:
-            if number >= 1000000000:
-                return '{0}B'.format(round(number/1000000000.0, 2))
-            elif number >= 1000000:
-                return '{0}M'.format(round(number/1000000.0, 2))
-            elif number >= 10000:
-                return '{:,}'.format(int(number))
-            elif number >= 1000:
-                return '{:,}'.format(round(number, 1))
-            elif number >= 10:
-                return '{:.2f}'.format(number)
-            elif number >= 1:
-                return '{:.3f}'.format(number)
-            else:
-                return str(number)
-        else:
-            if number >= 10000:
-                return int(number)
-            elif number >= 1000:
-                return round(number, 1)
-            elif number >= 10:
-                return round(number, 2)
-            elif number >= 1:
-                return round(number, 3)
-            else:
-                return number
-    
-    @classmethod
-    def split_eq(cls, eq):
-        split_ops = ['{0}'.format(op) if len(op) > 1 else '[{0}]'.format(op) for op in cls.OPERATORS[:-2] + cls.CONDITIONALS_SPACING + cls.COLORS]
-        split_raw = re.split(r"({0})".format("|".join(split_ops)), eq.replace('(', '').replace(')', ''), flags=re.IGNORECASE)
-        return ([item.upper().replace(' ', '') for item in list(filter(None, split_raw))], list(filter(None, split_raw)))
-
-    @classmethod
-    def check_eq(cls, eq, split=False, conditional=False):
-        if not eq:
-            return (False, "No equation entered")
-        if not split:
-            eq, eq_casing = cls.split_eq(eq)
-        print(eq)
-        if conditional and 'IF' not in eq and 'THEN' not in eq:
-            return (False, "'IF' and 'THEN' needed as arguments in a conditional statement")
-        if len(eq) == 1 and eq[0] not in Stock.get_variables()[1] and eq[0] not in conf['custom_variables']:
-            return (False, "If only one argument is given, it must be a variable")
-        if eq[0] in cls.OPERATORS and eq[0] != 'IF' or eq[0] in cls.COLORS: 
-            return (False, "The first argument cannot be an operator unless it is 'IF'")
-        for ii in range(0, len(eq)):
-            if eq[ii] in cls.OPERATORS:
-                if eq[ii - 1] in cls.OPERATORS or ii > 0 and eq[ii] == 'IF':
-                    return (False, "Operators cannot be adjacent") # Two operators should never be side by side, and if should not be after the first value
-            elif eq[ii] in cls.COLORS:
-                if eq[ii - 1] in cls.COLORS:
-                    return False # Two colors should never be side by side
-                elif eq[ii - 1] != 'THEN':
-                    return (False, "The argument before a color should always be 'THEN'")
-            elif eq[ii] not in Stock.get_variables()[1] and eq[ii] not in conf['custom_variables']:
-                try:
-                    int(eq[ii])
-                    if ii > 0:
-                        if eq[ii - 1] not in cls.OPERATORS:
-                            return (False, "Variables and/or Numerals cannot be adjacent")
-                except ValueError:
-                    return (False, "Invalid Variable: {0}".format(eq_casing[ii])) # anything that isn't a variable should be a numeral
-        if 'IF' in eq and 'THEN' not in eq:
-            return (False, "A conditional needs an 'IF' and a 'THEN'")
-        return (True, 'IF' in eq)
-
-    @classmethod
-    def evaluate_eq(cls, eq, stocks=None, string=False):
-        eq, eq_casing = cls.split_eq(eq)
-        if type(stocks) == Stock:
-            stocks = [stocks] # if not a stock array, then just make a temp array out of it
-        if len(eq) == 1: # if the equation is only one element, then the eval should just be a variable
-            evaluations = []
-            try:
-                index = Stock.get_variables()[1].index(eq[0])
-                for stock in stocks:
-                    evaluations.append(stock.attr_str(Stock.get_variables()[0][index])) # String value acceptable if only one variable
-            except ValueError:
-                try:
-                    v = cls.evaluate_eq(conf['custom_variables'][eq[0]], stocks=stocks) # For now all custom variables are uppercase, so just try to grab it directly
-                    evaluations.extend(v) if isinstance(v, list) else evaluations.append(v)
-                except KeyError:
-                    evaluations = ['NULL' if string else None for stock in stocks] # if a custom variable was deleted after being validated, we would end up here 
-                    return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one evaluation
-            if string:
-                evaluations = [str(v) if v else '-' for v in evaluations]
-            return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one expression
-        expressions = ['' for stock in stocks]
-        starting_index = 1 if conditional else 0
-        for value in eq[starting_index:]:
-            if value == 'THEN':
-                break
-            elif value in cls.OPERATORS:
-                for ii in range(len(expressions)):
-                    if expressions[ii] is not None:
-                        expressions[ii] += str(value)
-            else:
-                try:
-                    int(value)
-                    for ii in range(len(expressions)):
-                        if expressions[ii] is not None:
-                            expressions[ii] += str(value)
-                except ValueError:
-                    try:
-                        index = Stock.get_variables()[1].index(value) # find the index in the uppercase list to get the corresponding version with correct casing
-                        for ii in range(len(expressions)):
-                            v = stocks[ii].attr_num(Stock.get_variables()[0][index])
-                            if expressions[ii] is not None:
-                                if v:
-                                    expressions[ii] += str(v)
-                                else:
-                                    expressions[ii] = None
-                    except ValueError:
-                        try:
-                            v = cls.evaluate_eq(conf['custom_variables'][value], stocks=stocks) # For now all custom variables are uppercase, so just try to grab it directly
-                            for ii in range(len(expressions)):
-                                if expressions[ii] is not None and v:
-                                    if isinstance(v, list):
-                                        expressions[ii] += str(v[ii])
-                                    else:
-                                        expressions[ii] += str(v)
-                                else:
-                                    expressions[ii] = None
-                        except KeyError:
-                            evaluations = ['NULL' if string else None for stock in stocks] # if a custom variable was deleted after being validated, we would end up here 
-                            return evaluations[0] if len(evaluations) == 1 else evaluations # do not return as a list if only one evaluation
-        if string:
-            evaluations =  ['-' if not exp else Formatter.format_number(eval(exp), string=True) for exp in expressions]
-        else:
-            evaluations =  [None if not exp else Formatter.format_number(eval(exp)) for exp in expressions]
-        return evaluations[0] if len(expressions) == 1 else evaluations # do not return as a list if only one expression
 
 class Stock:
 
@@ -220,13 +75,21 @@ class Stock:
         #------User Data------
         #---------------------
         self.shares = shares
+        self.totalShares = 0 if shares else None
+        if self.totalShares:
+            for num_shares in shares:
+                self.totalShares += num_shares 
         self.group = group if group else 'Watchlist'
         self.widget = None
+
+    def __repr__(self):
+        return self.ticker
 
     @classmethod
     def get_variables(cls):
         if not cls.VARIABLE_ATTR:
-            cls.VARIABLE_ATTR = [key for key in list(vars(Stock()).keys()) if not key in ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget']]
+            cls.VARIABLE_ATTR = [key for key in list(vars(Stock()).keys()) if not key in \
+                ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget', 'shares']]
             cls.VARIABLE_ATTR.sort()
             cls.VARIABLE_ATTR_UPPER = [variable.upper() for variable in cls.VARIABLE_ATTR]
         return cls.VARIABLE_ATTR, cls.VARIABLE_ATTR_UPPER

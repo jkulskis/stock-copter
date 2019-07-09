@@ -6,7 +6,12 @@ import time
 class StockArray:
 
     def __init__(self, stocks=[]):
-        self.stocks = stocks
+        if isinstance(stocks, list):
+            self.stocks = stocks
+        elif isinstance(stocks, Stock):
+            self.stocks = [stocks]
+        else:
+            raise ValueError("Only stocks can be added to a stock array")
         if conf['preferences']:
             self.refresh_time = conf['preferences']['refresh_time']
         self.last_refresh = None
@@ -26,9 +31,9 @@ class StockArray:
     def __add__(self, item):
         if type(item) == Stock:
             self.stocks.append(item)
-            return True
         else:
-            return False
+            raise ValueError("Only stocks can be added to a stock array")
+        return self
 
     def __getitem__(self, index):
         return self.stocks[index]
@@ -49,27 +54,30 @@ class StockArray:
         else:
             return 0
     
+    def __repr__(self):
+        return (str(self.stocks))
+    
     def pop(self, index):
         return self.stocks.pop(index)
     
     def remove(self, item):
         self.stocks.remove(item)
 
-    def update_price(self, iex=True):
+    def update_price(self):
         if self.stocks:
-            if iex: # iex data found to be innacurate sometimes, so may use the other (slower) api for gathering multiple symbols
-                ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
-                # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
-                data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
-                for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
-                    self.stocks[ii].currentPrice = data[ii]['price']
-            else:
+            if len(self.stocks) > 10: # slower, but only one request if we just grab all of the stocks from the below link...iex has a 10 stock limit
                 data = requests.get('https://financialmodelingprep.com/api/v3/company/stock/list').json()
                 for stock in self.stocks:
                     for item in data['symbolsList']:
                         if item['symbol'] == stock.ticker:
                             stock.currentPrice = item['price']
                             break 
+            else:
+                ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
+                # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
+                data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
+                for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
+                    self.stocks[ii].currentPrice = data[ii]['price']
             return 0
 
     def update_financials(self):

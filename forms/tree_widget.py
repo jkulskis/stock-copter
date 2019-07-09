@@ -21,6 +21,10 @@ class TreeWidget(QtWidgets.QTreeWidget):
         self.setObjectName("treeWidget")
         self.header().setCascadingSectionResizes(False)
         self.setSortingEnabled(True)
+    
+    def dropEvent(self, event):
+        print('here')
+
 
     # def mouseReleaseEvent(self, event):
     #     if event.button() == QtCore.Qt.RightButton:

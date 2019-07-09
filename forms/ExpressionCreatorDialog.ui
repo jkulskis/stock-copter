@@ -6,39 +6,71 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>538</width>
-    <height>678</height>
+    <width>542</width>
+    <height>734</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Expression Creator</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
-    <layout class="QHBoxLayout" name="layoutListboxLabels">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLabel" name="labelVariables">
-       <property name="text">
-        <string>Variables:</string>
-       </property>
-      </widget>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="labelVariables">
+         <property name="text">
+          <string>Variables:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listViewVariableBox">
+         <property name="sortingEnabled">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
-      <widget class="QLabel" name="labelOperators">
-       <property name="text">
-        <string>Operators:</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="layoutListboxes">
-     <item>
-      <widget class="QListWidget" name="listViewVariableBox"/>
-     </item>
-     <item>
-      <widget class="QListWidget" name="listViewOperatorBox"/>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QLabel" name="labelOperators">
+         <property name="text">
+          <string>Operators:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listViewOperatorBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="sortingEnabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelConditionalOperators">
+         <property name="text">
+          <string>Conditional Operators</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listViewConditionalBox">
+         <property name="sortingEnabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>
@@ -71,6 +103,13 @@
     </layout>
    </item>
    <item>
+    <widget class="QLabel" name="labelErrorExpression">
+     <property name="text">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="layoutCheckboxes">
      <item>
       <widget class="QCheckBox" name="checkBoxAddToHeaders">
@@ -98,7 +137,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="llineEditHeaderName">
+      <widget class="QLineEdit" name="lineEditHeaderName">
        <property name="text">
         <string/>
        </property>
@@ -108,9 +147,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBoxAddConditional">
+      <widget class="QLabel" name="labelErrorHeader">
        <property name="text">
-        <string>Add Conditional</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -118,6 +157,13 @@
    </item>
    <item>
     <layout class="QVBoxLayout" name="layoutConditional">
+     <item>
+      <widget class="QCheckBox" name="checkBoxAddConditional">
+       <property name="text">
+        <string>Add Conditional</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QLabel" name="labelConditional">
        <property name="text">
@@ -131,7 +177,14 @@
         <string/>
        </property>
        <property name="placeholderText">
-        <string>if $this &gt; volume then RED</string>
+        <string>if volume &gt; 100 then Color.Red</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelErrorConditional">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -158,6 +211,13 @@
       </layout>
      </item>
      <item>
+      <widget class="QLabel" name="labelErrorVariableName">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <layout class="QVBoxLayout" name="layoutDescriptionSubCustomVariables">
        <item>
         <widget class="QLabel" name="labelDescription">
@@ -176,13 +236,6 @@
       </layout>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QLabel" name="labelError">
-     <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">

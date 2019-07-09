@@ -47,7 +47,8 @@ class Config:
     def _check_tree_view(self):
         if not 'tree_view' in self._raw_settings:
             self._raw_settings['tree_view'] = dict.fromkeys(['headers'])
-            self._raw_settings['tree_view']['headers'] = [{'text' : 'Ticker', 'eq' : 'ticker'}, {'text' : 'Price', 'eq' : 'currentPrice'}]
+            self._raw_settings['tree_view']['headers'] = [{'text' : 'Ticker', 'eq' : 'ticker', 'parsed_eq' : [['stock_variable', 'ticker']]}, 
+                                                        {'text' : 'Price', 'eq' : 'currentPrice', 'parsed_eq' : [['stock_variable', 'currentPrice']]}]
     
     def _check_custom_variables(self):
         if not 'custom_variables' in self._raw_settings:
