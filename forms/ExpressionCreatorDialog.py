@@ -118,9 +118,9 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         QtWidgets.QDialog.keyPressEvent(self, event)
 
     def update_actions(self):
-        self.ui.checkBoxSaveVariable.stateChanged.connect(lambda : self.check_changed(self.ui.checkBoxSaveVariable, self.ui.layoutCustomVariables))
-        self.ui.checkBoxAddToHeaders.stateChanged.connect(lambda : self.check_changed(self.ui.checkBoxAddToHeaders, self.ui.layoutHeader))
-        self.ui.checkBoxAddConditional.stateChanged.connect((lambda : self.check_changed(self.ui.checkBoxAddConditional, self.ui.layoutConditional)))
+        self.ui.checkBoxSaveVariable.stateChanged.connect(lambda : self.checkBox_changed(self.ui.checkBoxSaveVariable, self.ui.layoutCustomVariables))
+        self.ui.checkBoxAddToHeaders.stateChanged.connect(lambda : self.checkBox_changed(self.ui.checkBoxAddToHeaders, self.ui.layoutHeader))
+        self.ui.checkBoxAddConditional.stateChanged.connect((lambda : self.checkBox_changed(self.ui.checkBoxAddConditional, self.ui.layoutConditional)))
         self.ui.listViewVariableBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewVariableBox)))
         self.ui.listViewOperatorBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewOperatorBox)))
         self.ui.listViewConditionalBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewConditionalBox)))
@@ -196,9 +196,7 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         return valid
     
     def validate_header(self, same_name_allowed=False):
-        print(same_name_allowed)
         header_text = self.ui.lineEditHeaderName.text().rstrip()
-        print(header_text)
         self.ui.labelErrorHeader.hide()
         valid = True
         if not header_text:
@@ -238,21 +236,24 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.ui.labelErrorConditional.hide()
         self.ui.labelErrorHeader.hide()
         self.ui.labelErrorVariableName.hide()
-        self.hide_object(self.ui.layoutCustomVariables)
+        self.ui.labelSelectedVariableDescription.hide() # not setup yet
         while True:
             if self.policy == 'all_fields':
                 self.ui.checkBoxAddConditional.show()
                 self.hide_object(self.ui.layoutConditional)
+                self.hide_object(self.ui.layoutCustomVariables)
                 break
             self.hide_object(self.ui.checkBoxAddToHeaders)
             if self.policy == 'add_header':
                 self.hide_object(self.ui.layoutConditional)
                 self.ui.checkBoxAddConditional.show()
+                self.hide_object(self.ui.layoutCustomVariables)
                 break
             self.hide_object(self.ui.checkBoxAddConditional)
             self.hide_object(self.ui.checkBoxSaveVariable)
             if self.policy == 'edit_header':
                 self.hide_object(self.ui.layoutConditional)
+                self.hide_object(self.ui.layoutCustomVariables)
             elif self.policy == 'conditional':
                 self.hide_object(self.ui.layoutHeader)
             elif self.policy == 'custom':
@@ -260,20 +261,12 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
                 self.hide_object(self.ui.layoutHeader)
             break
 
-    def check_changed(self, checkbox, layout):
+    def checkBox_changed(self, checkbox, layout):
         if checkbox.isChecked():
-            self.show_layout(layout)
+            self.show_object(layout)
         else:
             self.hide_object(layout)
         checkbox.show() # if the checkbox is in the layout, still show it
-
-    def show_layout(self, layout):
-        for i in range(layout.count()):
-            widget = layout.itemAt(i)
-            if type(widget) == QtWidgets.QVBoxLayout:
-                self.show_layout(widget)
-            elif 'Error' not in layout.itemAt(i).widget().objectName(): # don't show the error labels
-                layout.itemAt(i).widget().show()
 
     def hide_object(self, q_object):
         if type(q_object) != QtWidgets.QVBoxLayout:
@@ -290,9 +283,9 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
     def show_object(self, q_object):
         if type(q_object) != QtWidgets.QVBoxLayout:
             q_object.show()
-        else:
+        elif q_object.objectName() != 'layoutDescriptionSubCustomVariables': # not setup yet
             for i in range(q_object.count()):
                 if type(q_object.itemAt(i)) == QtWidgets.QVBoxLayout:
                     self.show_object(q_object.itemAt(i))
-                else:
+                elif 'Error' not in q_object.itemAt(i).widget().objectName(): # don't show error labels
                     q_object.itemAt(i).widget().show()

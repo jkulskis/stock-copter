@@ -7,7 +7,6 @@
 # WARNING! All changes made in this file will be lost!
 
 from PySide2 import QtCore, QtGui, QtWidgets
-from forms.tree_widget import TreeWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -41,18 +40,15 @@ class Ui_MainWindow(object):
         self.pushButtonExpressionCreator.setObjectName("pushButtonExpressionCreator")
         self.horizontalLayout.addWidget(self.pushButtonExpressionCreator)
         self.pushButtonAddStock = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButtonAddStock.setObjectName("pushButtonAddStock")
-        self.horizontalLayout.addWidget(self.pushButtonAddStock)
-        self.pushButtonRemoveStock = QtWidgets.QPushButton(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButtonRemoveStock.sizePolicy().hasHeightForWidth())
-        self.pushButtonRemoveStock.setSizePolicy(sizePolicy)
-        self.pushButtonRemoveStock.setObjectName("pushButtonRemoveStock")
-        self.horizontalLayout.addWidget(self.pushButtonRemoveStock)
+        sizePolicy.setHeightForWidth(self.pushButtonAddStock.sizePolicy().hasHeightForWidth())
+        self.pushButtonAddStock.setSizePolicy(sizePolicy)
+        self.pushButtonAddStock.setObjectName("pushButtonAddStock")
+        self.horizontalLayout.addWidget(self.pushButtonAddStock)
         self.verticalLayout.addLayout(self.horizontalLayout)
-        self.treeWidget = TreeWidget(self.centralwidget)
+        self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Garuda")
         font.setPointSize(11)
@@ -62,7 +58,7 @@ class Ui_MainWindow(object):
         self.treeWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.treeWidget.setAutoFillBackground(False)
         self.treeWidget.setDragEnabled(False)
-        self.treeWidget.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.treeWidget.setDragDropMode(QtWidgets.QAbstractItemView.NoDragDrop)
         self.treeWidget.setAlternatingRowColors(True)
         self.treeWidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.treeWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -102,13 +98,14 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Stock Copter"))
         self.labelTitle.setText(_translate("MainWindow", "Stock Copter"))
-        self.pushButtonHeaderEditor.setText(_translate("MainWindow", "Edit Headers"))
+        self.pushButtonHeaderEditor.setText(_translate("MainWindow", "Edit Headers + Conditionals"))
         self.pushButtonExpressionCreator.setText(_translate("MainWindow", "Create Expression"))
-        self.pushButtonAddStock.setText(_translate("MainWindow", "-"))
-        self.pushButtonRemoveStock.setText(_translate("MainWindow", "+"))
+        self.pushButtonAddStock.setText(_translate("MainWindow", "+"))
         self.treeWidget.setSortingEnabled(True)
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionAdd_Stock.setText(_translate("MainWindow", "Add Stock"))
-        self.actionEdit_Headers.setText(_translate("MainWindow", "Edit Headers"))
+        self.actionEdit_Headers.setText(_translate("MainWindow", "Edit Headers + Conditionals"))
+        self.actionEdit_Headers.setIconText(_translate("MainWindow", "Edit Headers + Conditionals"))
+        self.actionEdit_Headers.setToolTip(_translate("MainWindow", "Edit Headers + Conditionals"))
         self.actionCreate_Expression.setText(_translate("MainWindow", "Create Expression"))
 

@@ -9,7 +9,7 @@ class Stock:
     VARIABLE_ATTR = [] # list of all the attributes in the class that can be used as variables
     VARIABLE_ATTR_UPPER = [] # these are static, and we don't want to loop through to make upper every time so make a variable and only do it once
 
-    def __init__(self, ticker=None, group=None, shares=None, **kwargs):
+    def __init__(self, ticker=None, group=None, shares=None, sharesPrices=None, **kwargs):
         self.ticker = ticker
         #---------------------
         #-----Public Data-----
@@ -75,10 +75,11 @@ class Stock:
         #------User Data------
         #---------------------
         self.shares = shares
-        self.totalShares = 0 if shares else None
-        if self.totalShares:
-            for num_shares in shares:
-                self.totalShares += num_shares 
+        self.sharesPrices = sharesPrices
+        self.totalShares = 0
+        self.averageSharePrice = 0
+        self.update_shares()
+        self.profit = None
         self.group = group if group else 'Watchlist'
         self.widget = None
 
@@ -89,7 +90,7 @@ class Stock:
     def get_variables(cls):
         if not cls.VARIABLE_ATTR:
             cls.VARIABLE_ATTR = [key for key in list(vars(Stock()).keys()) if not key in \
-                ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget', 'shares']]
+                ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget', 'shares', 'sharesPrices']]
             cls.VARIABLE_ATTR.sort()
             cls.VARIABLE_ATTR_UPPER = [variable.upper() for variable in cls.VARIABLE_ATTR]
         return cls.VARIABLE_ATTR, cls.VARIABLE_ATTR_UPPER
@@ -118,8 +119,18 @@ class Stock:
             self.currentPrice = data['price'] # Not all of the symbols are updated on this API, so check to make sure it went through, and fallback to IEX
         else:
             self.currentPrice = float(requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(self.ticker)).json()[0]['price'])
+        self.update_shares()
         return self.currentPrice
-        
+    
+    def update_shares(self):
+        if self.shares:
+            self.totalShares = 0
+            self.profit = 0
+            for ii in range(len(self.shares)):
+                self.totalShares += self.shares[ii]
+                if self.currentPrice:
+                    self.profit += self.attr_num('currentPrice')*self.shares[ii] - self.sharesPrices[ii]*self.shares[ii]
+
     def parse_v10_data(self, module, key):
         if key in module:
             if 'raw' in module[key]:
@@ -131,8 +142,9 @@ class Stock:
     
     # takes ~200-300ms with good wifi
     def update_all(self):
-        self.update_v10()
+        self.update_v10() # gets current price as well
         self.update_historical()
+        self.update_shares()
 
     # possible modules that we are using are financialData, defaultKeyStatistics
     def update_v10(self, modules=None):

@@ -6,34 +6,69 @@ from util.format import Formatter
 from forms.MainWindowUI import Ui_MainWindow
 from forms.AddStockDialog import AddStockDialog
 from forms.ExpressionCreatorDialog import ExpressionCreatorDialog
+from forms.HeaderEditor import HeaderEditorDialog
+from threading import Thread
+import time
+
+class UpdateThread():
+
+    def __init__(self, stocks, refresh_time, parent):
+        self.stocks = stocks
+        self.refresh_time = refresh_time
+        self.parent = parent
+        self.update_times = {'all' : time.time(), 'price' : time.time()}
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_ui)
+        self.timer.start(5000)
+
+    def update_ui(self):
+        if not self.update_times['all']:
+            print('Updating all...')
+            self.stocks.update_all()
+            self.update_times['all'] = time.time()
+            self.update_times['price'] = time.time()
+            self.parent.populate_tree_widget()
+        else:
+            if time.time() - self.update_times['all'] > 60*60*20: # set to 20 minutes for now
+                print('Updating all...')
+                self.stocks.update_all()
+                self.update_times['all'] = time.time()
+                self.update_times['price'] = time.time()
+                self.parent.populate_tree_widget()
+            elif time.time() - self.update_times['price'] > self.refresh_time:
+                print('Updating price...')
+                self.stocks.update_price()
+                self.update_times['price'] = time.time()
+                self.parent.populate_tree_widget()
 
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
         #---------------------
         #-----Config Data-----
         #---------------------
-        self.headers = conf['tree_view']['headers']
         if conf['stocks']:
             self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
         else:
             self.stocks = StockArray()
-        #---------------------
-        #----Other Dialogs----
-        #---------------------
-
+        self.headers = conf['tree_view']['headers']
         #--------------------
         #---Main UI Setup----
         #--------------------
+        self.ui = Ui_MainWindow()
         self.portfolio_tree = None
         self.watch_tree = None
         self.headerView = None
+        self.stocks.update_all()
+        self.reset_ui()
+        self.update_thread = UpdateThread(self.stocks, conf['preferences']['refresh_time'], self)
+    
+    def reset_ui(self):
+        self.ui.setupUi(self)
         self.setup_tree_widget()
         self.update_actions()
-
+    
     def setup_tree_widget(self):
         self.setup_header()
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
@@ -41,12 +76,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.watch_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.watch_tree.setText(0, 'Watchlist')
         self.setup_header()
-        self.populate_tree_view()
-    
-    def reset_ui(self):
-        self.ui.setupUi(self)
-        self.setup_tree_widget()
-        self.update_actions()
+        self.populate_tree_widget()
 
     def setup_header(self):
         self.headerView = QtWidgets.QHeaderView(QtCore.Qt.Orientation.Horizontal)
@@ -56,6 +86,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.treeWidget.setHeader(self.headerView)
 
     def closeEvent(self, event):
+        del self.update_thread
         self.check_headers() # check to see if the header positions were changed by the user before closing
         conf.stocks = self.stocks
         conf.dump_settings() # dump settings before quitting
@@ -70,6 +101,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.treeWidget.itemSelectionChanged.connect(self.selection_changed)
         self.ui.treeWidget.customContextMenuRequested.connect(self.treeWidget_context_menu)
         self.headerView.customContextMenuRequested.connect(self.headerView_context_menu)
+        self.ui.pushButtonAddStock.clicked.connect(self.add_stock)
+        self.ui.pushButtonExpressionCreator.clicked.connect(self.modify_expression)
+        self.ui.pushButtonHeaderEditor.clicked.connect(self.open_header_editor)
     
     def check_headers(self):
         column_count = len(self.headers)
@@ -92,8 +126,13 @@ class MainWindow(QtWidgets.QMainWindow):
             expression_creator_dialog = ExpressionCreatorDialog(policy=policy)
         accepted = expression_creator_dialog.exec_()
         if accepted:
+            if not edit and index is not None:
+                if index == -1:
+                    index = len(self.headers)
+                else:
+                    index += 1 # any new changes should be applied to the right of whichever header was clicked
             if index is None:
-                index = len(self.headers) - 1
+                index = len(self.headers)
             if expression_creator_dialog.header_name:
                 new_header = dict.fromkeys(('text', 'eq', 'parsed_eq'))
                 new_header['text'] = expression_creator_dialog.header_name
@@ -102,10 +141,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if edit:
                     self.headers[index] = new_header
                 else:
-                    if index == len(self.headers) - 1:
-                        self.headers.append(new_header)
-                    else:
-                        self.headers.insert(index, new_header)
+                    self.headers.insert(index, new_header)
             if expression_creator_dialog.custom_variable_name:
                 new_variable = dict.fromkeys(('true_casing', 'eq', 'parsed_eq'))
                 new_variable['true_casing'] = expression_creator_dialog.custom_variable_name
@@ -125,11 +161,16 @@ class MainWindow(QtWidgets.QMainWindow):
                         if self.headers[index]['conditionals'][ii]['eq'] == expression_creator_dialog.old_conditional:
                             self.headers[index]['conditionals'][ii] = new_conditional
                             break
-                if 'conditionals' in self.headers[index]:
-                    self.headers[index]['conditionals'].append(new_conditional)
                 else:
-                    self.headers[index]['conditionals'] = [new_conditional]
-            self.populate_tree_view()
+                    if 'conditionals' in self.headers[index]:
+                        self.headers[index]['conditionals'].append(new_conditional)
+                    else:
+                        self.headers[index]['conditionals'] = [new_conditional]
+            self.populate_tree_widget()
+
+    def open_header_editor(self):
+        header_editor_dialog = HeaderEditorDialog(self)
+        header_editor_dialog.exec_()
 
     def selection_changed(self):
         for item in self.ui.treeWidget.selectedItems():
@@ -146,7 +187,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def add_stock(self):
         add_stock_dialog = AddStockDialog(self.stocks)
         if add_stock_dialog.exec_():
-            self.populate_tree_view()
+            self.stocks[-1].update_all()
+            self.populate_tree_widget()
+    
+    def edit_stock(self, stock):
+        add_stock_dialog = AddStockDialog(self.stocks, stock)
+        if add_stock_dialog.exec_():
+            if stock:
+                stock.update_shares()
+            self.populate_tree_widget()
 
     def remove_stock(self):
         items = self.get_selected()
@@ -164,28 +213,33 @@ class MainWindow(QtWidgets.QMainWindow):
         menu = QtWidgets.QMenu(self.ui.treeWidget)
         remove_stock = QtWidgets.QAction("Remove Stock")
         add_stock = QtWidgets.QAction("Add Stock")
+        edit_stock = QtWidgets.QAction("Edit Stock")
         menu.addAction(add_stock)
-        if self.get_selected():
+        selected = self.get_selected()
+        if selected:
             menu.addAction(remove_stock)
+            if len(selected) == 1:
+                menu.addAction(edit_stock)
         action = menu.exec_(QtGui.QCursor.pos())
         if action == remove_stock:
             self.remove_stock()
         elif action == add_stock:
             self.add_stock()
+        elif action == edit_stock:
+            self.edit_stock(selected[0]['stock'])
     
     def headerView_context_menu(self, event):
         self.ui.treeWidget.clearSelection()
         logical_index = self.headerView.logicalIndexAt(event.x())
-        if logical_index == -1:
-            return
         menu = QtWidgets.QMenu(self.headerView)
         add_header = QtWidgets.QAction("Add Header")
         edit_header = QtWidgets.QAction("Edit Header")
         remove_header = QtWidgets.QAction("Remove Header")
         menu.addAction(add_header)
-        menu.addAction(edit_header)
-        if logical_index != 0:
-            menu.addAction(remove_header)
+        if logical_index != -1:
+            menu.addAction(edit_header)
+            if logical_index != 0:
+                menu.addAction(remove_header)
         self.check_headers()
         action = menu.exec_(QtGui.QCursor.pos())
         if action == add_header:
@@ -200,10 +254,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def remove_header(self, index):
         del self.headers[index]
         self.reset_ui()
-        #self.populate_tree_view()
 
-    def populate_tree_view(self):
-        # self.ui.treeWidget.headerItem() = QtWidgets.QTreeWidgetItem
+    def populate_tree_widget(self):
         self.clear_tree_view()
         for stock in self.stocks:
             if stock.group == 'Portfolio':
@@ -211,23 +263,17 @@ class MainWindow(QtWidgets.QMainWindow):
             if stock.group == 'Watchlist':
                 stock.widget = QtWidgets.QTreeWidgetItem(self.watch_tree)
         for ii in range(len(self.headers)):
-            # if ii != 0: # don't center for the first column
-            #     for stock in self.stocks:
-            #         stock.widget.setTextAlignment(ii, QtCore.Qt.AlignHCenter)
             self.ui.treeWidget.headerItem().setText(ii, self.headers[ii]['text'])
         self.ui.treeWidget.expandAll()
         self.update_tree()
     
     def update_tree(self):
-        #self.stocks.update_all()
-        #self.stocks.update_price()
         for ii in range(len(self.headers)):
             evaluations = Formatter.evaluate_eq(parsed_eq=self.headers[ii]['parsed_eq'], stocks=self.stocks, string=True)
             self.stocks.populate_widgets(column=ii, evaluations=evaluations)
             if 'conditionals' in self.headers[ii]:
                 for conditional in self.headers[ii]['conditionals']:
                     conditional_evaluations = Formatter.evaluate_eq(eq=conditional, stocks=self.stocks, parsed_eq=conditional['parsed_eq'])
-                    print(conditional_evaluations)
                     for jj in range(len(conditional_evaluations)):
                         if conditional_evaluations[jj]:
                             self.stocks[jj].widget.setBackground(ii, self.color(color=conditional_evaluations[jj]))
@@ -248,5 +294,3 @@ class MainWindow(QtWidgets.QMainWindow):
                 return QtGui.QBrush(QtGui.QColor(0, 255, 255))
             elif 'PINK' in color:
                 return QtGui.QBrush(QtGui.QColor(255, 192, 203))
-                
-

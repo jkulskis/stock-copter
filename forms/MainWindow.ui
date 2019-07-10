@@ -55,7 +55,7 @@
       <item>
        <widget class="QPushButton" name="pushButtonHeaderEditor">
         <property name="text">
-         <string>Edit Headers</string>
+         <string>Edit Headers + Conditionals</string>
         </property>
        </widget>
       </item>
@@ -63,13 +63,6 @@
        <widget class="QPushButton" name="pushButtonExpressionCreator">
         <property name="text">
          <string>Create Expression</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButtonRemoveStock">
-        <property name="text">
-         <string>-</string>
         </property>
        </widget>
       </item>
@@ -171,7 +164,13 @@
   </action>
   <action name="actionEdit_Headers">
    <property name="text">
-    <string>Edit Headers</string>
+    <string>Edit Headers + Conditionals</string>
+   </property>
+   <property name="iconText">
+    <string>Edit Headers + Conditionals</string>
+   </property>
+   <property name="toolTip">
+    <string>Edit Headers + Conditionals</string>
    </property>
   </action>
   <action name="actionCreate_Expression">

@@ -61,7 +61,7 @@ class Config:
 
     def dump_settings(self):
         self._raw_settings['stocks'] = {}
-        save_stock_keys = ['group', 'shares'] # Only save these stock attributes in the config
+        save_stock_keys = ['group', 'shares', 'sharesPrices'] # Only save these stock attributes in the config
         for stock in self.stocks:
             stock_dict = {stock.ticker : {}}
             for key in stock.__dict__:

@@ -65,12 +65,14 @@ class StockArray:
 
     def update_price(self):
         if self.stocks:
-            if len(self.stocks) > 10: # slower, but only one request if we just grab all of the stocks from the below link...iex has a 10 stock limit
+            if len(self.stocks) > 10: # slower, but only one request, so we can just grab all of the stocks from the below link...iex has a 10 stock limit
                 data = requests.get('https://financialmodelingprep.com/api/v3/company/stock/list').json()
                 for stock in self.stocks:
                     for item in data['symbolsList']:
                         if item['symbol'] == stock.ticker:
                             stock.currentPrice = item['price']
+                            if stock.shares:
+                                stock.profit = stock.currentPrice*stock.totalShares - stock.averageSharePrice*stock.totalShares
                             break 
             else:
                 ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
@@ -78,7 +80,13 @@ class StockArray:
                 data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
                 for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
                     self.stocks[ii].currentPrice = data[ii]['price']
-            return 0
+                self.update_shares()
+        return 0
+
+    def update_shares(self):
+        for stock in self.stocks:
+            stock.update_shares()
+        return 0
 
     def update_financials(self):
         for stock in self.stocks:
