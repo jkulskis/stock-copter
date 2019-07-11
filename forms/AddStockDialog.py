@@ -35,17 +35,19 @@ class AddStockDialog(QtWidgets.QDialog):
         if self.ui.radioButtonPortfolio.isChecked():
             self.ui.lineEditShares.setReadOnly(False)
             self.ui.lineEditPrices.setReadOnly(False)
+            self.group = 'Portfolio'
         else:
             self.ui.lineEditShares.setReadOnly(True)
             self.ui.lineEditPrices.setReadOnly(True)
             self.ui.lineEditShares.setText('')
             self.ui.lineEditPrices.setText('')
+            self.group = 'Watchlist'
 
     def accept(self):
         ticker = self.ui.lineEditTicker.text().upper()
         shares = self.ui.lineEditShares.text() if self.ui.lineEditShares.text() else None
         shares_prices = self.ui.lineEditPrices.text() if self.ui.lineEditPrices.text() else None
-        group = 'Watchlist' if self.ui.radioButtonWatchList.isChecked() else 'Portfolio'
+        group = self.group
         if not ticker:
             self.ui.labelError.setText(Formatter.get_error_text('Error: Invalid Ticker'))
             self.ui.labelError.show()
@@ -61,30 +63,30 @@ class AddStockDialog(QtWidgets.QDialog):
                 self.ui.labelError.setText(Formatter.get_error_text('Error: Invalid Ticker'))
                 self.ui.labelError.show()
                 return
-        if group == 'Portfolio':
-            if not shares:
-                self.ui.labelError.setText(Formatter.get_error_text('Error: Shares not specified'))
+        if group == 'Watchlist':
+            self.stocks += Stock(ticker=ticker)
+            super().accept()
+        if not shares:
+            self.ui.labelError.setText(Formatter.get_error_text('Error: Shares not specified'))
+            self.ui.labelError.show()
+            return
+        else:
+            try:
+                shares = [float(share) for share in ast.literal_eval('[{}]'.format(shares))]
+                shares_prices = [float(share_price) for share_price in ast.literal_eval('[{}]'.format(shares_prices.replace('$', '')))]
+                assert(len(shares) == len(shares_prices))
+            except ValueError:
+                self.ui.labelError.setText(Formatter.get_error_text('Error: Invalid shares and/or prices'))
                 self.ui.labelError.show()
                 return
-            else:
-                try:
-                    shares = [float(share) for share in ast.literal_eval('[{}]'.format(shares))]
-                    shares_prices = [float(share_price) for share_price in ast.literal_eval('[{}]'.format(shares_prices.replace('$', '')))]
-                    assert(len(shares) == len(shares_prices))
-                except ValueError:
-                    self.ui.labelError.setText(Formatter.get_error_text('Error: Invalid shares and/or prices'))
-                    self.ui.labelError.show()
-                    return
-                except AssertionError:
-                    self.ui.labelError.setText(Formatter.get_error_text('Error: num shares != num prices'))
-                    self.ui.labelError.show()
-                    return
-            if not self.stock:
-                self.stocks += Stock(ticker=ticker, group=group, shares=shares, sharesPrices=shares_prices)
-            else:
-                self.stock.group = group
-                self.stock.shares = shares
-                self.stock.sharesPrices = shares_prices
-            super().accept()
-            return
-
+            except AssertionError:
+                self.ui.labelError.setText(Formatter.get_error_text('Error: num shares != num prices'))
+                self.ui.labelError.show()
+                return
+        if not self.stock:
+            self.stocks += Stock(ticker=ticker, group=group, shares=shares, sharesPrices=shares_prices)
+        else:
+            self.stock.group = group
+            self.stock.shares = shares
+            self.stock.sharesPrices = shares_prices
+        super().accept()

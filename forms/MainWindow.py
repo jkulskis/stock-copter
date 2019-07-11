@@ -70,6 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_actions()
     
     def setup_tree_widget(self):
+        #self.ui.treeWidget.setStyleSheet("QTreeWidget::item { border-bottom: 1px solid black;}")
         self.setup_header()
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.portfolio_tree.setText(0, 'Portfolio')
@@ -171,6 +172,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def open_header_editor(self):
         header_editor_dialog = HeaderEditorDialog(self)
         header_editor_dialog.exec_()
+        self.reset_ui()
 
     def selection_changed(self):
         for item in self.ui.treeWidget.selectedItems():

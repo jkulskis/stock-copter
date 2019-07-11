@@ -69,6 +69,7 @@ class Formatter:
 
     @classmethod
     def check_eq(cls, eq, split=False, conditional=False, ambiguous=False):
+        eq = eq.rstrip()
         if not eq:
             return (False, "No equation entered")
         if not split:

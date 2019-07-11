@@ -8,9 +8,13 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
 
     def __init__(self, policy='all_fields', old_expression='', old_conditional='', old_header_name='', old_custom_variable_name='', old_custom_description=''):
         super(ExpressionCreatorDialog, self).__init__()
-        self.policy = policy
         self.ui = Ui_ExpressionCreatorDialog()
         self.ui.setupUi(self)
+        self.policy = policy
+        if self.policy == 'conditional':
+            self.last_line_edit_changed = self.ui.lineEditConditional
+        else:
+            self.last_line_edit_changed = self.ui.lineEditExpression
         self.hide_initial()
         self.ui.checkBoxAddToHeaders.setChecked(True)
         self.update_actions()
@@ -27,7 +31,6 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.custom_variable_name = old_custom_variable_name
         self.old_custom_variable_name = old_custom_variable_name
         self.custom_variable_description = old_custom_description
-        self.last_line_edit_changed = self.ui.lineEditExpression
         self.update_line_edits()
 
     def accept(self):
@@ -49,13 +52,14 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
             error = self.check_conditional()
         elif self.policy == 'custom':
             error = self.check_custom()
-        check_expression = Formatter.check_eq(self.expression) # expression is editable for every policy
-        if not check_expression[0]:
-            self.ui.labelErrorExpression.show()
-            self.ui.labelErrorExpression.setText(Formatter.get_error_text(check_expression[1]))
-            error = True
-        else:
-            self.parsed_expression = check_expression[2]
+        if self.policy != 'conditional': # expression is editable for every policy except for conditionals
+            check_expression = Formatter.check_eq(self.expression) 
+            if not check_expression[0]:
+                self.ui.labelErrorExpression.show()
+                self.ui.labelErrorExpression.setText(Formatter.get_error_text(check_expression[1]))
+                error = True
+            else:
+                self.parsed_expression = check_expression[2]
         if not error:
             super().accept()
 
@@ -121,16 +125,20 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.ui.checkBoxSaveVariable.stateChanged.connect(lambda : self.checkBox_changed(self.ui.checkBoxSaveVariable, self.ui.layoutCustomVariables))
         self.ui.checkBoxAddToHeaders.stateChanged.connect(lambda : self.checkBox_changed(self.ui.checkBoxAddToHeaders, self.ui.layoutHeader))
         self.ui.checkBoxAddConditional.stateChanged.connect((lambda : self.checkBox_changed(self.ui.checkBoxAddConditional, self.ui.layoutConditional)))
-        self.ui.listViewVariableBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewVariableBox)))
-        self.ui.listViewOperatorBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewOperatorBox)))
-        self.ui.listViewConditionalBox.doubleClicked.connect((lambda : self.insert_variable(self.ui.listViewConditionalBox)))
+        self.ui.listViewVariableBox.itemActivated.connect((lambda : self.insert_variable(self.ui.listViewVariableBox)))
+        self.ui.listViewOperatorBox.itemActivated.connect((lambda : self.insert_variable(self.ui.listViewOperatorBox)))
+        self.ui.listViewConditionalBox.itemActivated.connect((lambda : self.insert_variable(self.ui.listViewConditionalBox)))
         self.ui.lineEditExpression.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditExpression)))
         self.ui.lineEditConditional.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditConditional)))
+        self.ui.lineEditExpression.cursorPositionChanged.connect(self.cursor_changed)
         if self.policy == 'edit_header':
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=True)))
         else:
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=False)))
         self.ui.lineEditCustomVariableName.textChanged.connect((lambda : self.validate_custom_variable()))
+
+    def cursor_changed(self):
+        print('here')
 
     def update_line_edits(self):
         self.ui.lineEditExpression.setText(self.expression)
@@ -156,7 +164,7 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         else:
             self.ui.labelErrorExpression.hide()
         check = Formatter.check_eq(lineEdit.text(), conditional=conditional)
-        if not lineEdit.text():
+        if not lineEdit.text().rstrip():
             valid = None
         elif check[0]:
             valid = True
@@ -220,6 +228,14 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
                 self.last_line_edit_changed.setText('{0}'.format(item.text()))
         box.clearSelection()
         self.last_line_edit_changed.setFocus()
+        if self.last_line_edit_changed.objectName() == 'lineEditExpression':
+            self.validate_expression(self.ui.lineEditExpression)
+        elif self.last_line_edit_changed.objectName() == 'lineEditConditional':
+            self.validate_expression(self.ui.lineEditConditional)
+        elif self.last_line_edit_changed.objectName() == 'lineEditCustomVariableName':
+            self.validate_custom_variable()
+        elif self.last_line_edit_changed.objectName() == 'lineEditHeaderName':
+            self.validate_header()
 
     def update_boxes(self):
         for variable in self.stock_variables_casing:
@@ -255,9 +271,11 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
                 self.hide_object(self.ui.layoutConditional)
                 self.hide_object(self.ui.layoutCustomVariables)
             elif self.policy == 'conditional':
+                self.hide_object(self.ui.layoutExpression)
                 self.hide_object(self.ui.layoutHeader)
+                self.hide_object(self.ui.layoutCustomVariables)
             elif self.policy == 'custom':
-                self.show_object(self.ui.layoutCustomVariables)
+                self.hide_object(self.ui.layoutConditional)
                 self.hide_object(self.ui.layoutHeader)
             break
 

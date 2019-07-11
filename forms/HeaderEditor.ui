@@ -18,6 +18,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QTreeWidget" name="treeWidgetHeaders">
+       <property name="animated">
+        <bool>true</bool>
+       </property>
        <property name="headerHidden">
         <bool>false</bool>
        </property>
@@ -64,14 +67,14 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
-          <widget class="QPushButton" name="pushButtonDown">
+          <widget class="QPushButton" name="pushButtonUp">
            <property name="text">
             <string>∧</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButtonUp">
+          <widget class="QPushButton" name="pushButtonDown">
            <property name="text">
             <string>∨</string>
            </property>
@@ -102,7 +105,7 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+      <set>QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>

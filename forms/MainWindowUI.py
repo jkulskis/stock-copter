@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
         self.pushButtonHeaderEditor.setText(_translate("MainWindow", "Edit Headers + Conditionals"))
         self.pushButtonExpressionCreator.setText(_translate("MainWindow", "Create Expression"))
         self.pushButtonAddStock.setText(_translate("MainWindow", "+"))
-        self.treeWidget.setSortingEnabled(True)
+        self.treeWidget.setSortingEnabled(False)
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionAdd_Stock.setText(_translate("MainWindow", "Add Stock"))
         self.actionEdit_Headers.setText(_translate("MainWindow", "Edit Headers + Conditionals"))
