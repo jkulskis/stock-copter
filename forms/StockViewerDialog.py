@@ -2,8 +2,10 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from forms.StockViewerDialogUI import Ui_StockViewerDialog
 from util.stock import Stock
 from util.format import Formatter
+from util.pg_axes import DateAxisItem, PriceAxisItem
 import pyqtgraph as pg
 import numpy as np
+import time
 
 class StockViewerDialog(QtWidgets.QDialog):
 
@@ -17,6 +19,7 @@ class StockViewerDialog(QtWidgets.QDialog):
         self.stock_variables = []
         self.populate_table()
         self.ui.tableWidget.resizeColumnsToContents()
+        self.set_axes()
         self.update_graph()
         self.historical_data = {'timestamp': [], 'price_data': {}, 'timeframe': None, 'interval': None}
         self.ui.comboBox.currentIndexChanged.connect(self.update_graph)
@@ -40,6 +43,13 @@ class StockViewerDialog(QtWidgets.QDialog):
                     self.ui.tableWidget.setItem(row_num, 1, value_widget)
                     row_num += 1
     
+    def set_axes(self):
+        axisX = DateAxisItem(orientation='bottom')
+        axisX.attachToPlotItem(self.ui.graphicsView.getPlotItem())
+        axisY = PriceAxisItem(orientation='left')
+        axisY.attachToPlotItem(self.ui.graphicsView.getPlotItem())
+        self.ui.graphicsView.getPlotItem().updateGrid()
+
     def update_graph(self):
         if self.ui.comboBox.currentIndex() == 0: # 30 minutes
             timeframe = self.get_days('30m')
@@ -73,7 +83,6 @@ class StockViewerDialog(QtWidgets.QDialog):
             timeframe = self.get_days('5y')
         elif self.ui.comboBox.currentIndex() == 15: # max
             timeframe = -1
-        print(timeframe)
         self.historical_data = self.stock.update_historical(timeframe=timeframe, return_data=True)
         if self.historical_data is not None: # if invalid time range, will return none
             x = []
@@ -82,7 +91,7 @@ class StockViewerDialog(QtWidgets.QDialog):
                 if self.historical_data['price_data']['close'][ii] is not None:
                     x.append(self.historical_data['timestamp'][ii])
                     y.append(self.historical_data['price_data']['close'][ii])
-            self.ui.graphicsView.plot(np.asarray(x), np.asarray(y), title='Price data: {}'.format(self.ui.comboBox.currentText()), pen='g', clear=True)
+            self.ui.graphicsView.plot(x=x, y=y, title='Price data: {}'.format(self.ui.comboBox.currentText()), pen='g', clear=True)
 
     def get_days(self, time):
         assert time[-1] in ['m', 'h', 'd', 'w', 'M', 'y']

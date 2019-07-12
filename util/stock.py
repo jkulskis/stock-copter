@@ -193,7 +193,7 @@ class Stock:
                 interval = '5m'
             else:
                 interval = '1d' # default to 1d if not able to do 1m or 5m since 1d can go back to the beginning
-        if timeframe == -1: # if -1, then get all possible data
+        if timeframe == -1: # if -1, then get all possible data ## &includePrePost=true
             url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval={3}&events=div' \
                     .format(self.ticker, 0, 9999999999, interval)
         else:

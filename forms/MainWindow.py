@@ -68,9 +68,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.portfolio_tree = None
         self.watch_tree = None
         self.headerView = None
+        self.update_thread = UpdateThread(self.stocks, conf['preferences']['refresh_time'], self)
         self.stocks.update_all()
         self.reset_ui()
-        self.update_thread = UpdateThread(self.stocks, conf['preferences']['refresh_time'], self)
     
     def reset_ui(self):
         self.ui.setupUi(self)
