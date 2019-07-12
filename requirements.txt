@@ -2,3 +2,5 @@ pytest
 PySide2
 requests
 pyyaml
+qdarkstyle
+git+https://github.com/pyqtgraph/pyqtgraph

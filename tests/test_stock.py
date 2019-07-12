@@ -93,3 +93,9 @@ def test_update_historical():
 
 def test_attr():
 	print(list(vars(Stock()).keys()))
+
+def test_return_historical():
+	stock = Stock('AAPL')
+	print(stock.update_historical(timeframe=4, return_data=True)) # should use 1m
+	print(stock.update_historical(timeframe=10, return_data=True)) # should use 5m
+	print(stock.update_historical(timeframe=80, return_data=True)) # should use 1d

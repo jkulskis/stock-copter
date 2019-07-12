@@ -4,12 +4,11 @@ from PySide2 import QtCore, QtGui, QtWidgets
 
 class HeaderEditorDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent):
+    def __init__(self, headers):
         super(HeaderEditorDialog, self).__init__()
-        self.parent = parent
         self.ui = Ui_HeaderEditorDialog()
         self.ui.setupUi(self)
-        self.headers = self.parent.headers
+        self.headers = headers
         self.populate_tree_widget()
         if len(self.headers): # select the first item on startup if there is one
             self.selected_item = {'item' : self.get_item(0), 'index' : 0, 'parent_index' : None}

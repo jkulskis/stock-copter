@@ -3,6 +3,7 @@ from forms.ExpressionCreatorDialogUI import Ui_ExpressionCreatorDialog
 from util.stock import Stock
 from util.format import Formatter
 from util.config import conf
+import qdarkstyle
 
 class ExpressionCreatorDialog(QtWidgets.QDialog):
 
@@ -18,7 +19,6 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.hide_initial()
         self.ui.checkBoxAddToHeaders.setChecked(True)
         self.update_actions()
-        self.stock_variables_casing = Stock.get_variables()[0]
         self.custom_variables_casing = [conf['custom_variables'][variable]['true_casing'] for variable in conf['custom_variables']]
         self.update_boxes()
         self.expression = old_expression
@@ -130,15 +130,11 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.ui.listViewConditionalBox.itemActivated.connect((lambda : self.insert_variable(self.ui.listViewConditionalBox)))
         self.ui.lineEditExpression.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditExpression)))
         self.ui.lineEditConditional.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditConditional)))
-        self.ui.lineEditExpression.cursorPositionChanged.connect(self.cursor_changed)
         if self.policy == 'edit_header':
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=True)))
         else:
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=False)))
         self.ui.lineEditCustomVariableName.textChanged.connect((lambda : self.validate_custom_variable()))
-
-    def cursor_changed(self):
-        print('here')
 
     def update_line_edits(self):
         self.ui.lineEditExpression.setText(self.expression)
@@ -150,11 +146,14 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
     def color_on_validation(self, lineEdit, valid=None):
         self.last_line_edit_changed = lineEdit
         if valid:
-            lineEdit.setStyleSheet("""QLineEdit { background-color: green}""")
+            lineEdit.setStyleSheet('background-color: green')
         elif valid == False:
-            lineEdit.setStyleSheet("""QLineEdit { background-color: red}""")
+            lineEdit.setStyleSheet('background-color: red')
         else:
-            lineEdit.setStyleSheet("""QLineEdit { background-color: white}""")
+            #lineEdit.setStyleSheet("""QLineEdit { background-color: white}""")
+            #default_background = 'QLineEdit { background-color: {}}'.format(QtGui.QTextLine.palette().color(QtGui.QPalette.Background).name())
+            lineEdit.setStyleSheet('background-color: {}'.format(qdarkstyle.DarkPalette().COLOR_BACKGROUND_DARK))
+            pass
 
     def validate_expression(self, lineEdit):
         self.last_line_edit_changed = lineEdit
@@ -238,7 +237,7 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
             self.validate_header()
 
     def update_boxes(self):
-        for variable in self.stock_variables_casing:
+        for variable in Stock.get_variables()[0]:
             self.ui.listViewVariableBox.addItem(variable)
         for variable in self.custom_variables_casing:
             self.ui.listViewVariableBox.addItem(variable)

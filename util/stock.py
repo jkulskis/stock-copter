@@ -63,8 +63,7 @@ class Stock:
         self.dividends = None
         self.fiftyTwoWeekHigh = None
         self.fiftyTwoWeekLow = None
-        self.historical = {'timestamp': [], 'price_data': {}, 'timeframe': None} # use lists for timestamps and a dict of lists for price_data where indices correspond
-        self.historical_recent = {'timestamp': [], 'price_data': {}, 'period1': None, 'period2': None, 'timeframe': None}
+        self.historical_data = {'timestamp': [], 'price_data': {}, 'timeframe': None, 'interval': None} # use lists for timestamps and a dict of lists for price_data where indices correspond
         self.movingAverage5 = None
         self.movingAverage20 = None
         self.movingAverage50 = None
@@ -90,7 +89,7 @@ class Stock:
     def get_variables(cls):
         if not cls.VARIABLE_ATTR:
             cls.VARIABLE_ATTR = [key for key in list(vars(Stock()).keys()) if not key in \
-                ['v10_attr', 'daily_attr', 'historical', 'historical_recent', 'widget', 'shares', 'sharesPrices']]
+                ['v10_attr', 'daily_attr', 'historical_data', 'widget', 'shares', 'sharesPrices']]
             cls.VARIABLE_ATTR.sort()
             cls.VARIABLE_ATTR_UPPER = [variable.upper() for variable in cls.VARIABLE_ATTR]
         return cls.VARIABLE_ATTR, cls.VARIABLE_ATTR_UPPER
@@ -182,23 +181,54 @@ class Stock:
         else:
             return 1
 
-    def update_historical(self, timeframe=1, check_previous=False):
-        if check_previous and self.historical['timeframe'] and self.historical['timeframe'] >= timeframe:
-            return 0
-        self.historical['timeframe'] = timeframe
-        url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval=1d&events=div' \
-                .format(self.ticker, int((datetime.now() - timedelta(weeks=timeframe*52)).timestamp()), int(time.time()))
+    def update_historical(self, timeframe=365, interval=None, return_data=False):
+        if interval:
+            assert interval in ['1m', '5m', '1d', '3mo'] # valid intervals for v8 yahoo finance data
+        else:
+            if timeframe == -1:
+                interval = '1d'
+            elif timeframe < 7: # Up to 7 days back to look at 1m data
+                interval = '1m'
+            elif timeframe < 45: # Up to 60 days back to look at 5m data...go a little less to be safe
+                interval = '5m'
+            else:
+                interval = '1d' # default to 1d if not able to do 1m or 5m since 1d can go back to the beginning
+        if timeframe == -1: # if -1, then get all possible data
+            url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval={3}&events=div' \
+                    .format(self.ticker, 0, 9999999999, interval)
+        else:
+            url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval={3}&events=div' \
+                    .format(self.ticker, int((datetime.now() - timedelta(days=timeframe)).timestamp()), int(time.time()), interval)
         data = requests.get(url).json()
         if 'chart' in data:
             data = data['chart'] if not data['chart']['error'] else None
         if data:
             data = data['result'][0]
-            self.historical['timestamp'] = list(map(int, data['timestamp']))
-            self.historical['price_data']['adjclose'] = list(map(Formatter.format_number, data['indicators']['adjclose'][0]['adjclose']))
-            for k, v in data['indicators']['quote'][0].items(): # set the daily attributes to so that we don't have to do another request
-                if k in self.daily_attr:
+            if 'timestamp' not in data:
+                return None # invalid range...most likely too recent when the market is closed
+            if return_data: # if returning the data, just grab it and return everything, Don't update the actual values
+                return_dict = {'timestamp': [], 'price_data': {}, 'timeframe': None, 'interval': None}
+                return_dict['timeframe'] = timeframe
+                return_dict['interval'] = interval
+                return_dict['timestamp'] = list(map(int, data['timestamp']))
+                if 'adjclose' in data['indicators']:
+                    return_dict['price_data']['adjclose'] = list(map(Formatter.format_number, data['indicators']['adjclose'][0]['adjclose']))
+                else:
+                    return_dict['price_data']['adjclose'] = None
+                for k, v in data['indicators']['quote'][0].items(): 
+                    return_dict['price_data'][k] = [Formatter.format_number(float(d)) if d else None for d in v] # Might not have data for this timestamp...if so then set to None
+                return return_dict
+            self.historical_data['timeframe'] = timeframe
+            self.historical_data['interval'] = interval
+            self.historical_data['timestamp'] = list(map(int, data['timestamp']))
+            if 'adjclose' in data['indicators']:
+                self.historical_data['price_data']['adjclose'] = list(map(Formatter.format_number, data['indicators']['adjclose'][0]['adjclose']))
+            else:
+                self.historical_data['price_data']['adjclose'] = None
+            for k, v in data['indicators']['quote'][0].items(): 
+                if k in self.daily_attr: # set the daily attributes to so that we don't have to do another request
                     setattr(self, k, Formatter.format_number(float(v[-1])))
-                self.historical['price_data'][k] = [Formatter.format_number(float(d)) for d in v]
+                self.historical_data['price_data'][k] = [Formatter.format_number(float(d)) if d else None for d in v] # Might not have data for this timestamp...if so then set to None
             if 'events' in data and 'dividends' in data['events']: # really only need events key check, but I may decide to use splits as an event later
                 latest_timestamp = 0
                 for k, v in data['events']['dividends'].items():
@@ -214,12 +244,12 @@ class Stock:
     def update_low_high(self):
         low = None
         high = None
-        for price in self.historical['price_data']['low']:
+        for price in self.historical_data['price_data']['low']:
             if not low:
                 low = price
             elif price < low:
                 low = price
-        for price in self.historical['price_data']['high']:
+        for price in self.historical_data['price_data']['high']:
             if not high:
                 high = price
             if price > high:
@@ -229,18 +259,18 @@ class Stock:
     
     def update_moving_averages(self):
         self.movingAverage5 = self.movingAverage20 = self.movingAverage50 = self.movingAverage100 = self.movingAverage200 = 0
-        data_points = len(self.historical['price_data']['close'])
+        data_points = len(self.historical_data['price_data']['close'])
         for ii in range(data_points - 1, data_points - 201, -1):
             if ii >= data_points - 200:
-                self.movingAverage200 += self.historical['price_data']['close'][ii]
+                self.movingAverage200 += self.historical_data['price_data']['close'][ii]
                 if ii >= data_points - 100:
-                    self.movingAverage100 += self.historical['price_data']['close'][ii]
+                    self.movingAverage100 += self.historical_data['price_data']['close'][ii]
                     if ii >= data_points - 50:
-                        self.movingAverage50 += self.historical['price_data']['close'][ii]
+                        self.movingAverage50 += self.historical_data['price_data']['close'][ii]
                         if ii >= data_points - 20:
-                            self.movingAverage20 += self.historical['price_data']['close'][ii]
+                            self.movingAverage20 += self.historical_data['price_data']['close'][ii]
                             if ii >= data_points - 5:
-                                self.movingAverage5 += self.historical['price_data']['close'][ii]
+                                self.movingAverage5 += self.historical_data['price_data']['close'][ii]
                                 if ii < 0:
                                     self.movingAverage5 = None
                             if ii < 0:
@@ -267,12 +297,16 @@ class Stock:
     
     def update_rsi(self, days=14):
         close_prices = []
-        data_points = len(self.historical['price_data']['adjclose'])
+        if self.historical_data['price_data']['adjclose']: # Might not have gotten adjclose during update
+            close_key = 'adjclose'
+        else:
+            close_key = 'close'
+        data_points = len(self.historical_data['price_data'][close_key])
         for ii in range(data_points - 1, data_points - days - 2, -1): # highest index has most recent data
             if ii < 0:
                 self.rsi = None
                 return 0
-            close_prices.append(self.historical['price_data']['adjclose'][ii])
+            close_prices.append(self.historical_data['price_data'][close_key][ii])
         previous_gain = 0
         previous_loss = 0
         for ii in range(1, days + 1): # lowest index has most recent data

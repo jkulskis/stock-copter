@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>266</width>
-    <height>195</height>
+    <width>264</width>
+    <height>199</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -22,7 +22,7 @@
   <property name="inputMethodHints">
    <set>Qt::ImhNone</set>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
+  <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLineEdit" name="lineEditTicker">
      <property name="placeholderText">
@@ -33,68 +33,72 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item alignment="Qt::AlignTop">
-        <widget class="QRadioButton" name="radioButtonWatchList">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Watch List</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item alignment="Qt::AlignTop">
+      <widget class="QRadioButton" name="radioButtonWatchList">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Watch List</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButtonPortfolio">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Portfolio</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayoutSharesPrices">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
         <widget class="QLabel" name="labelShares">
          <property name="text">
           <string>Share(s):</string>
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignTop">
-        <widget class="QLineEdit" name="lineEditShares">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="placeholderText">
-          <string>200, 140</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item alignment="Qt::AlignTop">
-        <widget class="QRadioButton" name="radioButtonPortfolio">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Portfolio</string>
-         </property>
-        </widget>
-       </item>
-       <item alignment="Qt::AlignTop">
+       <item>
         <widget class="QLabel" name="labelPrices">
          <property name="text">
           <string>Price(s):</string>
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignTop">
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QLineEdit" name="lineEditShares">
+         <property name="readOnly">
+          <bool>false</bool>
+         </property>
+         <property name="placeholderText">
+          <string>200, 140</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLineEdit" name="lineEditPrices">
          <property name="readOnly">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <property name="placeholderText">
           <string>23.33, 24.33</string>
@@ -105,14 +109,14 @@
      </item>
     </layout>
    </item>
-   <item alignment="Qt::AlignTop">
+   <item>
     <widget class="QLabel" name="labelError">
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Error: Invalid Ticker&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignTop">
+   <item>
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>

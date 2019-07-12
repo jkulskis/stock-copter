@@ -75,7 +75,7 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>+</string>
+         <string>Add Stock</string>
         </property>
        </widget>
       </item>

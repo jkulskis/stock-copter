@@ -111,9 +111,9 @@ class StockArray:
         for stock in self.stocks:
             stock.update_daily()
     
-    def update_historical(self, timeframe=1, check_previous=False):
+    def update_historical(self, timeframe=1):
         for stock in self.stocks:
-            stock.update_historical(timeframe, check_previous)
+            stock.update_historical(timeframe)
 
     # def update_historical(self):
 

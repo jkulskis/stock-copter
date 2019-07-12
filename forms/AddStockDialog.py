@@ -22,8 +22,7 @@ class AddStockDialog(QtWidgets.QDialog):
         else:
             self.ui.radioButtonPortfolio.setChecked(True)
         self.stock = stock
-        self.setFixedHeight(self.sizeHint().height())
-        self.setFixedWidth(self.sizeHint().width())
+        self.ui.verticalLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.ui.labelError.hide()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.update_line_edits()
@@ -33,14 +32,18 @@ class AddStockDialog(QtWidgets.QDialog):
     
     def update_line_edits(self):
         if self.ui.radioButtonPortfolio.isChecked():
-            self.ui.lineEditShares.setReadOnly(False)
-            self.ui.lineEditPrices.setReadOnly(False)
+            self.ui.lineEditShares.show()
+            self.ui.lineEditPrices.show()
+            self.ui.labelPrices.show()
+            self.ui.labelShares.show()
             self.group = 'Portfolio'
         else:
-            self.ui.lineEditShares.setReadOnly(True)
-            self.ui.lineEditPrices.setReadOnly(True)
             self.ui.lineEditShares.setText('')
             self.ui.lineEditPrices.setText('')
+            self.ui.lineEditShares.hide()
+            self.ui.lineEditPrices.hide()
+            self.ui.labelPrices.hide()
+            self.ui.labelShares.hide()
             self.group = 'Watchlist'
 
     def accept(self):
@@ -55,7 +58,7 @@ class AddStockDialog(QtWidgets.QDialog):
         if not self.stock:
             for ii in range(len(self.stocks)):
                 if self.stocks[ii].ticker == ticker:
-                    self.ui.labelError.setText(Formatter.get_error_text('Error: Stock already in {0}'.format(group)))
+                    self.ui.labelError.setText(Formatter.get_error_text('Error: Stock already in {0}'.format(self.stocks[ii].group)))
                     self.ui.labelError.show()
                     return
             data = requests.get('https://query1.finance.yahoo.com/v10/finance/quoteSummary/{0}?modules=financialData'.format(ticker)).json()
@@ -64,7 +67,15 @@ class AddStockDialog(QtWidgets.QDialog):
                 self.ui.labelError.show()
                 return
         if group == 'Watchlist':
-            self.stocks += Stock(ticker=ticker)
+            if self.stock:
+                self.stock.group = group
+                self.stock.shares = None
+                self.stock.sharesPrices = None
+                self.stock.totalShares = 0
+                self.stock.averageSharePrice = 0
+                self.stock.profit = None
+            else:
+                self.stocks += Stock(ticker=ticker)
             super().accept()
         if not shares:
             self.ui.labelError.setText(Formatter.get_error_text('Error: Shares not specified'))
@@ -83,10 +94,10 @@ class AddStockDialog(QtWidgets.QDialog):
                 self.ui.labelError.setText(Formatter.get_error_text('Error: num shares != num prices'))
                 self.ui.labelError.show()
                 return
-        if not self.stock:
-            self.stocks += Stock(ticker=ticker, group=group, shares=shares, sharesPrices=shares_prices)
-        else:
+        if self.stock:
             self.stock.group = group
             self.stock.shares = shares
             self.stock.sharesPrices = shares_prices
+        else:
+            self.stocks += Stock(ticker=ticker, group=group, shares=shares, sharesPrices=shares_prices)
         super().accept()
