@@ -1,3 +1,4 @@
+from appdirs import user_data_dir
 import yaml
 import sys, os
 import re
@@ -13,13 +14,12 @@ class Config:
 
     @property
     def _filename(self):
-        application_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-        if 'stock-copter.py' not in os.listdir(application_path):
-            application_path = '' # when running tests, app path is the venv bin...just use 'data/' instead
-        data_path = os.path.join(application_path, 'data')
-        if not os.path.exists(data_path):
-            os.mkdir(data_path)
-        return os.path.join(data_path, 'config.yml')
+        appname = "Stock-Copter"
+        appauthor = "John Mikulskis"
+        config_dir = user_data_dir(appname, appauthor)
+        if not os.path.exists(config_dir):
+            os.mkdir(config_dir)
+        return os.path.join(config_dir, 'config.yml')
 
     def __getitem__(self, key):
         return self._raw_settings[key]
