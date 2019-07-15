@@ -14,40 +14,29 @@ import time
 
 class UpdateThread():
 
-    def __init__(self, stocks, refresh_time, parent):
+    def __init__(self, stocks, parent):
         self.stocks = stocks
-        self.refresh_time = refresh_time
         self.parent = parent
-        self.update_times = {'all' : time.time(), 'price' : time.time()}
+        self.update_all_time = time.time()
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(5000)
+        self.timer.start(1000*conf['preferences']['refresh_time'])
 
     def update_ui(self):
-        if not self.update_times['all']:
-            print('Updating all...')
-            self.stocks.update_all()
-            self.update_times['all'] = time.time()
-            self.update_times['price'] = time.time()
-            self.parent.populate_tree_widget()
+        if not self.update_all_time:
+            self.update_all()
         else:
-            if time.time() - self.update_times['all'] > 60*60*20: # set to 20 minutes for now
-                print('Updating all...')
-                self.stocks.update_all()
-                self.update_times['all'] = time.time()
-                self.update_times['price'] = time.time()
-                self.parent.populate_tree_widget()
-            elif time.time() - self.update_times['price'] > self.refresh_time:
+            if time.time() - self.update_all_time > 60*60*20: # set to 20 minutes for now
+                self.update_all()
+            else:
                 print('Updating price...')
                 self.stocks.update_price()
-                self.update_times['price'] = time.time()
                 self.parent.populate_tree_widget()
     
     def update_all(self):
         print('Updating all...')
         self.stocks.update_all()
-        self.update_times['all'] = time.time()
-        self.update_times['price'] = time.time()
+        self.update_all_time = time.time()
         self.parent.populate_tree_widget()
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -69,7 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.portfolio_tree = None
         self.watch_tree = None
         self.headerView = None
-        self.update_thread = UpdateThread(self.stocks, conf['preferences']['refresh_time'], self)
+        self.update_thread = UpdateThread(self.stocks, self)
         self.stocks.update_all()
         self.reset_ui()
         self.resize(934, 502)
@@ -107,6 +96,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         self.update_thread.timer.stop() # stop the timer to avoid hang
+        del self.update_thread.timer
         self.check_headers() # check to see if the header positions were changed by the user before closing
         conf.stocks = self.stocks # update the config stocks...only tickers are stored and there is no reference in conf (to avoid import loops with the Stock class)
         conf.dump_settings() # dump settings before quitting
@@ -226,9 +216,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def add_stock(self):
         add_stock_dialog = AddStockDialog(self.stocks)
         if add_stock_dialog.exec_():
+            self.populate_tree_widget() # populate even if no values for the stock yet so it doesn't seem like it is lagging
             self.stocks[-1].update_all()
             self.populate_tree_widget()
-            self.update_thread.update_all()
     
     def edit_stock(self, stock):
         add_stock_dialog = AddStockDialog(self.stocks, stock)
