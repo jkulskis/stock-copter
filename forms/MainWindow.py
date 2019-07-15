@@ -72,6 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_thread = UpdateThread(self.stocks, conf['preferences']['refresh_time'], self)
         self.stocks.update_all()
         self.reset_ui()
+        self.resize(934, 502)
     
     def reset_ui(self):
         self.ui.setupUi(self)
