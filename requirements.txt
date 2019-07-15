@@ -3,4 +3,5 @@ PySide2
 requests
 pyyaml
 qdarkstyle
+appdirs
 git+https://github.com/pyqtgraph/pyqtgraph
