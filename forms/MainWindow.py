@@ -130,7 +130,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_about(self):
         msg_box = QtWidgets.QMessageBox()
         msg_box.setText('<font size="+2">Created by <a href="https://github.com/jkulskis/" size="+2">@jkulskis</a></font> <td>\
-                        <font size="-1">Copyright © 2019 John Mikulskis under the MIT license</font>')
+                        <font size="-1">Copyright © 2019 John Mikulskis (GNU GPL)</font>')
         msg_box.setWindowTitle('About')
         msg_box.setTextFormat(QtCore.Qt.RichText)
         msg_box.setStandardButtons(QtWidgets.QMessageBox.Close)
