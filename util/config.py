@@ -15,10 +15,10 @@ class Config:
     @property
     def _filename(self):
         appname = "Stock-Copter"
-        appauthor = "John Mikulskis"
+        appauthor = "jkulskis"
         config_dir = user_data_dir(appname, appauthor)
         if not os.path.exists(config_dir):
-            os.mkdir(config_dir)
+            os.makedirs(config_dir)
         return os.path.join(config_dir, 'config.yml')
 
     def __getitem__(self, key):
