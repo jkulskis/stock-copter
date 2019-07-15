@@ -20,12 +20,19 @@ class HeaderEditorDialog(QtWidgets.QDialog):
     def update_actions(self):
         self.ui.treeWidgetHeaders.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
         self.ui.treeWidgetHeaders.currentItemChanged.connect(self.item_changed) # itemSelectionChanged is buggy when mouse is dragged, so use currentItemChanged
+        self.ui.treeWidgetHeaders.itemActivated.connect(self.edit)
         self.ui.pushButtonUp.pressed.connect(self.up)
         self.ui.pushButtonDown.pressed.connect(self.down)
         self.ui.pushButtonAddConditional.pressed.connect(self.add_conditional)
         self.ui.pushButtonAddHeader.pressed.connect(self.add_header)
         self.ui.pushButtonEdit.pressed.connect(self.edit)
         self.ui.pushButtonRemove.pressed.connect(self.remove)
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Enter:
+            pass
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.accept()
 
     def populate_tree_widget(self):
         self.ui.treeWidgetHeaders.clear()

@@ -239,7 +239,7 @@ class Stock:
             self.update_rsi()
             return 0
         else:
-            return 1
+            return None
     
     def update_low_high(self):
         low = None

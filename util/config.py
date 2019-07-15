@@ -9,6 +9,7 @@ class Config:
     def __init__(self):
         self._raw_settings = self._load_settings()
         self._check_all_settings()
+        self.stocks = [] # stocks get dumped in here when the program is closing
 
     @property
     def _filename(self):
@@ -27,7 +28,6 @@ class Config:
         self._raw_settings[key] = value
 
     def _load_settings(self):
-        refresh_time = 7 * 60 * 60 * 24 # refresh the cookie & crumb every 7 days
         try:
             _raw_settings = yaml.safe_load(open(self._filename, 'r'))
         except FileNotFoundError:
@@ -57,7 +57,9 @@ class Config:
     def _check_preferences(self):
         if not 'preferences' in self._raw_settings:
             self._raw_settings['preferences'] = dict.fromkeys(['refresh_time'])
-            self._raw_settings['preferences']['refresh_time'] = 10
+            self._raw_settings['preferences']['refresh_time'] = 30
+            self._raw_settings['preferences']['graph_color'] = 'g'
+            self._raw_settings['preferences']['font'] = {'family' : 'Garuda', 'size' : 11}
 
     def dump_settings(self):
         self._raw_settings['stocks'] = {}

@@ -38,8 +38,12 @@ class AddStockDialog(QtWidgets.QDialog):
             self.ui.labelShares.show()
             self.group = 'Portfolio'
         else:
-            self.ui.lineEditShares.setText('')
-            self.ui.lineEditPrices.setText('')
+            if self.stock and self.stock.shares:
+                self.ui.lineEditShares.setText(str(self.stock.shares)[1:-1]) # use 1:-1 so that the list brackes will not be included
+                self.ui.lineEditPrices.setText(str(self.stock.sharesPrices)[1:-1])
+            else:
+                self.ui.lineEditShares.setText('')
+                self.ui.lineEditPrices.setText('')
             self.ui.lineEditShares.hide()
             self.ui.lineEditPrices.hide()
             self.ui.labelPrices.hide()

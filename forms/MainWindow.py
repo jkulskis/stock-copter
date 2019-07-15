@@ -7,7 +7,8 @@ from forms.MainWindowUI import Ui_MainWindow
 from forms.AddStockDialog import AddStockDialog
 from forms.ExpressionCreatorDialog import ExpressionCreatorDialog
 from forms.HeaderEditor import HeaderEditorDialog
-from forms.StockViewerDialog import StockViewerDialog
+from forms.StockViewerWidget import StockViewerWidget
+from forms.PreferencesDialog import PreferencesDialog
 from threading import Thread
 import time
 
@@ -74,12 +75,16 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def reset_ui(self):
         self.ui.setupUi(self)
+        label_font = QtGui.QFont(conf['preferences']['font']['family'])
+        label_font.setPointSize(13)
         self.setup_tree_widget()
+        self.ui.labelTitle.setFont(label_font)
+        tree_font = QtGui.QFont(conf['preferences']['font']['family'])
+        tree_font.setPointSize(conf['preferences']['font']['size'])
+        self.ui.treeWidget.setFont(tree_font)
         self.update_actions()
     
     def setup_tree_widget(self):
-        #self.ui.treeWidget.setStyleSheet("QTreeWidget::item { border-bottom: 1px solid black;}")
-        self.setup_header()
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.portfolio_tree.setText(0, 'Portfolio')
         self.portfolio_tree.setFlags(self.portfolio_tree.flags() ^ QtCore.Qt.ItemIsSelectable)
@@ -95,6 +100,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.headerView.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.headerView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.treeWidget.setHeader(self.headerView)
+        header_font = QtGui.QFont(conf['preferences']['font']['family'])
+        header_font.setPointSize(conf['preferences']['font']['size'])
+        self.headerView.setFont(header_font)
 
     def closeEvent(self, event):
         self.update_thread.timer.stop() # stop the timer to avoid hang
@@ -110,13 +118,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.actionAdd_Stock.triggered.connect(self.add_stock)
         self.ui.actionCreate_Expression.triggered.connect(self.modify_expression)
         self.ui.actionEdit_Headers.triggered.connect(self.open_header_editor)
+        self.ui.actionPreferences.triggered.connect(self.open_preferences)
+        self.ui.actionAbout.triggered.connect(self.show_about)
         self.ui.treeWidget.customContextMenuRequested.connect(self.treeWidget_context_menu)
-        self.ui.treeWidget.itemDoubleClicked.connect(self.open_stock_view)
+        self.ui.treeWidget.itemActivated.connect(self.open_stock_view)
         self.headerView.customContextMenuRequested.connect(self.headerView_context_menu)
         self.ui.pushButtonAddStock.clicked.connect(self.add_stock)
         self.ui.pushButtonExpressionCreator.clicked.connect(self.modify_expression)
         self.ui.pushButtonHeaderEditor.clicked.connect(self.open_header_editor)
     
+    def show_about(self):
+        msg_box = QtWidgets.QMessageBox()
+        msg_box.setText('<font size="+2">Created by <a href="https://github.com/jkulskis/" size="+2">@jkulskis</a></font> <td>\
+                        <font size="-1">Copyright © 2019 John Mikulskis under the MIT license</font>')
+        msg_box.setWindowTitle('About')
+        msg_box.setTextFormat(QtCore.Qt.RichText)
+        msg_box.setStandardButtons(QtWidgets.QMessageBox.Close)
+        msg_box.exec_()
+
+    def open_preferences(self):
+        preferences_dialog = PreferencesDialog(self.headers)
+        if preferences_dialog.exec_():
+            self.reset_ui()
+
     def check_headers(self):
         column_count = len(self.headers)
         for ii in range(column_count):
@@ -183,8 +207,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def open_stock_view(self):
         selected = self.get_selected()
         if selected: # will be none if portfolio tree or watch tree was double clicked
-            stock_viewer_dialog = StockViewerDialog(selected[0]['stock'])
-            stock_viewer_dialog.exec_()
+            stock_viewer_dialog = StockViewerWidget(selected[0]['stock'])
+            stock_viewer_dialog.show()
 
     def open_header_editor(self):
         header_editor_dialog = HeaderEditorDialog(self.headers)
@@ -286,10 +310,12 @@ class MainWindow(QtWidgets.QMainWindow):
             evaluations = Formatter.evaluate_eq(parsed_eq=self.headers[ii]['parsed_eq'], stocks=self.stocks, string=True)
             self.stocks.populate_widgets(column=ii, evaluations=evaluations)
             if 'conditionals' in self.headers[ii]:
+                already_applied = [False]*len(self.stocks)
                 for conditional in self.headers[ii]['conditionals']:
                     conditional_evaluations = Formatter.evaluate_eq(eq=conditional, stocks=self.stocks, parsed_eq=conditional['parsed_eq'])
                     for jj in range(len(conditional_evaluations)):
-                        if conditional_evaluations[jj]:
+                        if conditional_evaluations[jj] and not already_applied[jj]: # apply the first conditional that is not None
+                            already_applied[jj] = True
                             self.stocks[jj].widget.setBackground(ii, self.color(color=conditional_evaluations[jj]))
                             self.stocks[jj].widget.setForeground(ii, self.color(color='BLACK'))
     

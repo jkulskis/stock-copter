@@ -1,4 +1,5 @@
 #############################################################################
+# Slighly modified by me from https://gist.github.com/cpascual/cdcead6c166e63de2981bc23f5840a98
 #
 # This file was adapted from Taurus TEP17, but all taurus dependencies were 
 # removed so that it works with just pyqtgraph
@@ -26,17 +27,13 @@
 #
 #############################################################################
 
-"""
-This module provides date-time aware axis
-"""
-
 __all__ = ["DateAxisItem"]
 
 import numpy
 from pyqtgraph import AxisItem
 from util.format import Formatter
 from datetime import datetime, timedelta
-from time import mktime
+from time import mktime, localtime
 
 class PriceAxisItem(AxisItem):
     def __init__(self, *args, **kwargs):
@@ -44,10 +41,10 @@ class PriceAxisItem(AxisItem):
         self._oldAxis = None
 
     def tickStrings(self, values, scale, spacing):
-        """Reimplemented from PlotItem to format as price"""
+        """Reimplemented from PlotItem to format as price with custom formatter"""
         ret = []
         for x in values:
-            ret.append('${}'.format(Formatter.format_number(x, string=True)))
+            ret.append('${}'.format(Formatter.format_number(x, string=True, no_scientific=True)))
         return ret
     
     def attachToPlotItem(self, plotItem):
@@ -81,6 +78,12 @@ class DateAxisItem(AxisItem):
     def __init__(self, *args, **kwargs):
         AxisItem.__init__(self, *args, **kwargs)
         self._oldAxis = None
+        self.time_padding = []
+        self.timestamps = []
+
+    def set_times(self, timestamps, time_padding):
+        self.timestamps = timestamps
+        self.time_padding = time_padding
 
     def tickValues(self, minVal, maxVal, size):
         """
@@ -88,12 +91,9 @@ class DateAxisItem(AxisItem):
         the ticks at "round" positions in the context of time units instead of
         rounding in a decimal base
         """
-
         maxMajSteps = int(size/self._pxLabelWidth)
-
         dt1 = datetime.fromtimestamp(minVal)
         dt2 = datetime.fromtimestamp(maxVal)
-
         dx = maxVal - minVal
         majticks = []
 
@@ -102,7 +102,6 @@ class DateAxisItem(AxisItem):
             for y in range(dt1.year + 1, dt2.year):
                 dt = datetime(year=y, month=1, day=1)
                 majticks.append(mktime(dt.timetuple()))
-
         elif dx > 5270400:  # 3600s*24*61 = 61 days
             d = timedelta(days=31)
             dt = dt1.replace(day=1, hour=0, minute=0,
@@ -112,21 +111,18 @@ class DateAxisItem(AxisItem):
                 dt = dt.replace(day=1)
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
         elif dx > 172800:  # 3600s24*2 = 2 days
             d = timedelta(days=1)
             dt = dt1.replace(hour=0, minute=0, second=0, microsecond=0) + d
             while dt < dt2:
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
         elif dx > 7200:  # 3600s*2 = 2hours
             d = timedelta(hours=1)
             dt = dt1.replace(minute=0, second=0, microsecond=0) + d
             while dt < dt2:
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
         elif dx > 1200:  # 60s*20 = 20 minutes
             d = timedelta(minutes=10)
             dt = dt1.replace(minute=(dt1.minute // 10) * 10,
@@ -134,32 +130,39 @@ class DateAxisItem(AxisItem):
             while dt < dt2:
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
         elif dx > 120:  # 60s*2 = 2 minutes
             d = timedelta(minutes=1)
             dt = dt1.replace(second=0, microsecond=0) + d
             while dt < dt2:
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
         elif dx > 20:  # 20s
             d = timedelta(seconds=10)
             dt = dt1.replace(second=(dt1.second // 10) * 10, microsecond=0) + d
             while dt < dt2:
                 majticks.append(mktime(dt.timetuple()))
                 dt += d
-
-        elif dx > 2:  # 2s
+        elif dx >= 1:  # 2s
             d = timedelta(seconds=1)
-            majticks = range(int(minVal), int(maxVal))
-
-        else:  # <2s , use standard implementation from parent
-            return AxisItem.tickValues(self, minVal, maxVal, size)
-
+            dt = dt1.replace(second=(dt1.second // 1) * 1, microsecond=0) + d
+            while dt < dt2:
+                majticks.append(mktime(dt.timetuple()))
+                dt += d
+        elif dx >= 0.001:
+            d = timedelta(milliseconds=1)
+            dt = dt1.replace(second=(dt1.second // 1) * 1, microsecond=0) + d
+            while dt < dt2:
+                majticks.append(mktime(dt.timetuple()))
+                dt += d
+        else:
+            d = timedelta(microseconds=1)
+            dt = dt1.replace(second=(dt1.second // 1) * 1, microsecond=0) + d
+            while dt < dt2:
+                majticks.append(mktime(dt.timetuple()))
+                dt += d
         L = len(majticks)
         if L > maxMajSteps:
             majticks = majticks[::int(numpy.ceil(float(L) / maxMajSteps))]
-
         return [(d.total_seconds(), majticks)]
 
     def tickStrings(self, values, scale, spacing):
@@ -167,37 +170,45 @@ class DateAxisItem(AxisItem):
         ret = []
         if not values:
             return []
-
-        if spacing >= 31622400:  # 366 days
-            fmt = "%Y"
-
-        elif spacing >= 2678400:  # 31 days
-            fmt = "%Y %b"
-
-        elif spacing >= 86400:  # = 1 day
-            fmt = "%b/%d"
-
-        elif spacing >= 3600:  # 1 h
+        if spacing < 1:
+            fmt = "%H:%S.%f"
+        elif spacing < timedelta(hours=0.5).total_seconds():
+            fmt = "%b/%d-%H:%S"
+        elif spacing < timedelta(days=1).total_seconds():
             fmt = "%b/%d-%H:%M"
-
-        elif spacing >= 60:  # 1 m
-            fmt = "%H:%M"
-
-        elif spacing >= 1:  # 1s
-            fmt = "%H:%M:%S"
-
+        elif spacing < timedelta(days=31).total_seconds():
+            fmt = "%b/%d"
+        elif spacing < timedelta(days=366).total_seconds():
+            fmt = "%Y %b"
         else:
-            # less than 2s (show microseconds)
-            # fmt = '%S.%f"'
-            fmt = '[+%fms]'  # explicitly relative to last second
-
+            fmt = "%Y"
+        ii = 0
+        for ti in range(len(self.timestamps)):
+            if ii == len(values):
+                break
+            elif self.timestamps[ti] >= values[ii]:
+                for jj in range(ii, len(values)):
+                    if self.timestamps[ti] >= values[jj]:
+                        values[ii] += self.time_padding[ti]
+                        ii += 1
+                    else:
+                        break
+        if ii < len(values):
+            for jj in range(ii, len(values)):
+                values[ii] += self.time_padding[-1]
         for x in values:
             try:
                 t = datetime.fromtimestamp(x)
-                ret.append(t.strftime(fmt))
+                if spacing < 0.000001:
+                    ret.append(t.strftime(fmt))
+                elif spacing < 0.001:
+                    ret.append(t.strftime(fmt))[:-3]
+                else:
+                    ret.append(t.strftime(fmt))
             except ValueError:  # Windows can't handle dates before 1970
-                ret.append('')
-
+                ret.append('')             
+            except TypeError: # if striftime returns None
+                return []
         return ret
 
     def attachToPlotItem(self, plotItem):

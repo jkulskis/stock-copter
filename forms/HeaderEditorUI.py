@@ -62,7 +62,7 @@ class Ui_HeaderEditorDialog(object):
 
     def retranslateUi(self, HeaderEditorDialog):
         _translate = QtCore.QCoreApplication.translate
-        HeaderEditorDialog.setWindowTitle(_translate("HeaderEditorDialog", "Dialog"))
+        HeaderEditorDialog.setWindowTitle(_translate("HeaderEditorDialog", "Header & Conditional Editor"))
         self.treeWidgetHeaders.headerItem().setText(0, _translate("HeaderEditorDialog", "Headers"))
         self.pushButtonAddHeader.setText(_translate("HeaderEditorDialog", "Add Header"))
         self.pushButtonAddConditional.setText(_translate("HeaderEditorDialog", "Add Conditional"))

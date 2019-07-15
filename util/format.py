@@ -12,37 +12,45 @@ class Formatter:
     STOCK_VARIABLES = ([],[])
 
     @classmethod
-    def format_number(cls, number, string=False):
+    def format_number(cls, number, string=False, no_scientific=False):
+        if number is None:
+            return None
         if isinstance(number, str):
             try:
                 number = float(number)
             except ValueError:
                 return number if string else None
         if string:
-            if number >= 1000000000:
+            if abs(number) >= 1000000000:
                 return '{0}B'.format(round(number/1000000000.0, 2))
-            elif number >= 1000000:
+            elif abs(number) >= 1000000:
                 return '{0}M'.format(round(number/1000000.0, 2))
-            elif number >= 10000:
+            elif abs(number) >= 10000:
                 return '{:,}'.format(int(number))
-            elif number >= 1000:
+            elif abs(number) >= 1000:
                 return '{:,}'.format(round(number, 1))
-            elif number >= 10:
+            elif abs(number) >= 10:
                 return '{:.2f}'.format(number)
-            elif number >= 1:
+            elif abs(number) >= 1:
                 return '{:.2f}'.format(number)
-            elif number >= 0.01:
+            elif abs(number) >= 0.01:
                 return '{:.3f}'.format(number)
             else:
-                return '{:.2e}'.format(number)
+                if no_scientific:
+                    if abs(number) >= 0.001:
+                       return '{:.4f}'.format(number)
+                    else:
+                        return '0.000'
+                else:
+                    return '{:.2e}'.format(number)
         else:
-            if number >= 10000:
+            if abs(number) >= 10000:
                 return int(number)
-            elif number >= 1000:
+            elif abs(number) >= 1000:
                 return round(number, 1)
-            elif number >= 10:
+            elif abs(number) >= 10:
                 return round(number, 2)
-            elif number >= 1:
+            elif abs(number) >= 1:
                 return round(number, 3)
             else:
                 return number
@@ -74,7 +82,6 @@ class Formatter:
             return (False, "No equation entered")
         if not split:
             eq, eq_casing = cls.split_eq(eq)
-        #print(eq) ##########################DEBUG PRINT
         parsed_eq = []
         if ambiguous: # Not sure if conditional, but know that the format is valid, so check if 'IF' is in eq to determine if conditional
             conditional = 'IF' in eq
@@ -103,7 +110,7 @@ class Formatter:
                 parsed_eq.append(['stock_variable', cls.get_stock_variables()[0][index]])
             else:
                 try:
-                    int(item)
+                    float(item)
                     parsed_eq.append(['numeral', item])
                 except ValueError:
                     if item == '(':
@@ -178,7 +185,7 @@ class Formatter:
                     parsed_eq.append(['numerical_op', '*'])
                 if item not in cls.get_stock_variables()[1] and item not in conf['custom_variables']:
                     try:
-                        int(item)
+                        float(item)
                         parsed_eq.append(['numeral', item])
                         break
                     except ValueError:
@@ -275,11 +282,11 @@ class Formatter:
                 elif value != 'IF':
                     for ii in range(len(expressions)):
                         if expressions[ii] is not None:
-                            expressions[ii] += ' {} '.format(value.lower())
+                            expressions[ii] += ' {} '.format(value.lower()) # conditional ops such as and and or need spaces to use eval
             elif key == 'conditional_result':
-                            conditional_results.append(value)
+                conditional_results.append(value)
         #########################################################################################
-        if conditional_ops is None:
+        if conditional_ops is None: # we are not evaluating a conditional if there are no conditional ops
             if string:
                 return [cls.format_number(eval(expression), string=True) if expression else '-' for expression in expressions]
             else:
@@ -289,16 +296,17 @@ class Formatter:
             alt_conditionals = []
             for op, expressions in conditional_ops:
                 if op == 'IF':
-                    pass
+                    pass # nothing setup yet. may change if "elif" / "else if" statements added
                 elif op == 'THEN':
                     main_conditionals = expressions
+                    alt_conditionals = [None]*len(expressions)
                 elif op == 'ELSE':
-                    alt_conditionals = [exp if exp and exp is not None else '1' for exp in expressions]# always true if just an else with no exp
+                    alt_conditionals = [exp if exp != '' else '1' for exp in expressions] # append something that will eval to always be true if exp is empty
             evaluations = []
             for ii in range(len(stocks)):
                 if main_conditionals[ii] and eval(main_conditionals[ii]):
                     evaluations.append(conditional_results[0])
-                elif alt_conditionals and alt_conditionals[ii] and eval(alt_conditionals[ii]):
+                elif alt_conditionals[ii] is not None and main_conditionals[ii] is not None and eval(alt_conditionals[ii]):
                     evaluations.append(conditional_results[1])
                 else:
                     evaluations.append(None)

@@ -130,11 +130,18 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.ui.listViewConditionalBox.itemActivated.connect((lambda : self.insert_variable(self.ui.listViewConditionalBox)))
         self.ui.lineEditExpression.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditExpression)))
         self.ui.lineEditConditional.textChanged.connect((lambda : self.validate_expression(self.ui.lineEditConditional)))
+        self.ui.lineEditExpression.returnPressed.connect(self.line_edit_enter)
+        self.ui.lineEditHeaderName.returnPressed.connect(self.line_edit_enter)
+        self.ui.lineEditConditional.returnPressed.connect(self.line_edit_enter)
+        self.ui.lineEditCustomVariableName.returnPressed.connect(self.line_edit_enter)
         if self.policy == 'edit_header':
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=True)))
         else:
             self.ui.lineEditHeaderName.textChanged.connect((lambda : self.validate_header(same_name_allowed=False)))
         self.ui.lineEditCustomVariableName.textChanged.connect((lambda : self.validate_custom_variable()))
+
+    def line_edit_enter(self):
+        self.accept()
 
     def update_line_edits(self):
         self.ui.lineEditExpression.setText(self.expression)
@@ -254,8 +261,8 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         self.ui.labelSelectedVariableDescription.hide() # not setup yet
         while True:
             if self.policy == 'all_fields':
-                self.ui.checkBoxAddConditional.show()
                 self.hide_object(self.ui.layoutConditional)
+                self.ui.checkBoxAddConditional.show()
                 self.hide_object(self.ui.layoutCustomVariables)
                 break
             self.hide_object(self.ui.checkBoxAddToHeaders)
