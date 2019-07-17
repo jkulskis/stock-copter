@@ -38,6 +38,8 @@ class AddStockDialog(QtWidgets.QDialog):
         self.ui.radioButtonWatchList.toggled.connect(self.update_line_edits)
         if stock:
             self.ui.lineEditTicker.setReadOnly(True)
+            if '^' in stock.ticker:
+                self.ui.radioButtonPortfolio.setEnabled(False) # can't have shares of these stocks
     
     def update_line_edits(self):
         """Updates the line edits according to which radio button is checked.

@@ -25,6 +25,8 @@ class UpdateThread():
     def update_ui(self):
         """Updates the UI and stocks. Only updates all the stock properties every 20 minutes
         """
+        conf.stocks = self.stocks # update the config stocks...only tickers are stored and there is no reference in conf (to avoid import loops with the Stock class)
+        conf.dump_settings() # dump settings every now and then just in case of a crash or forced quit
         if not self.update_all_time:
             self.update_all()
         else:
