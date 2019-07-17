@@ -49,7 +49,9 @@ class PriceAxisItem(AxisItem):
     
     def attachToPlotItem(self, plotItem):
         """Add this axis to the given PlotItem
-        :param plotItem: (PlotItem)
+        
+        Arguments:
+            plotItem {PlotItem} -- PlotItem to attach to
         """
         self.setParentItem(plotItem)
         viewBox = plotItem.getViewBox()
@@ -82,6 +84,13 @@ class DateAxisItem(AxisItem):
         self.timestamps = []
 
     def set_times(self, timestamps, time_padding):
+        """Sets the timestamps and time padding from the stock's historical data
+        
+        Arguments:
+            timestamps {list}} -- epoch timestamps of the stock's historical data
+            time_padding {list} -- time padding (in seconds) of each timestamp, where the 
+                                    indices of this list correspond to the timestamps list
+        """
         self.timestamps = timestamps
         self.time_padding = time_padding
 
@@ -183,7 +192,7 @@ class DateAxisItem(AxisItem):
         else:
             fmt = "%Y"
         ii = 0
-        for ti in range(len(self.timestamps)):
+        for ti in range(len(self.timestamps)): # Adjusts the tick string values according to the time padding
             if ii == len(values):
                 break
             elif self.timestamps[ti] >= values[ii]:
@@ -213,7 +222,9 @@ class DateAxisItem(AxisItem):
 
     def attachToPlotItem(self, plotItem):
         """Add this axis to the given PlotItem
-        :param plotItem: (PlotItem)
+        
+        Arguments:
+            plotItem {PlotItem} -- PlotItem to attach to
         """
         self.setParentItem(plotItem)
         viewBox = plotItem.getViewBox()

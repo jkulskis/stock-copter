@@ -7,6 +7,15 @@ import ast
 class AddStockDialog(QtWidgets.QDialog):
 
     def __init__(self, stocks, stock=None, group='Watchlist'):
+        """init method of the dialog
+        
+        Arguments:
+            stocks {StockArray} -- Array of current stocks
+        
+        Keyword Arguments:
+            stock {Stock} -- Stock to be edited (default: {None})
+            group {str} -- Stock group to setup the dialog with if a stock is not being edited (default: {'Watchlist'})
+        """
         super(AddStockDialog, self).__init__()
         self.ui = Ui_AddStockDialog()
         self.ui.setupUi(self)
@@ -31,6 +40,12 @@ class AddStockDialog(QtWidgets.QDialog):
             self.ui.lineEditTicker.setReadOnly(True)
     
     def update_line_edits(self):
+        """Updates the line edits according to which radio button is checked.
+
+        The shares and price line edits are hidden if the portfolio radio button is unchecked, and
+        if a portfolio stock is being edited, then these line edits are populated with the stock's
+        previous values 
+        """
         if self.ui.radioButtonPortfolio.isChecked():
             self.ui.lineEditShares.show()
             self.ui.lineEditPrices.show()
@@ -51,6 +66,11 @@ class AddStockDialog(QtWidgets.QDialog):
             self.group = 'Watchlist'
 
     def accept(self):
+        """Overrides the accept method of the dialog.
+
+        If all of the conditions to save a stock are met, then the stock will be created or edited as intended, 
+        otherwise an error label will be shown with why the dialog was not accepted.
+        """
         ticker = self.ui.lineEditTicker.text().upper()
         shares = self.ui.lineEditShares.text() if self.ui.lineEditShares.text() else None
         shares_prices = self.ui.lineEditPrices.text() if self.ui.lineEditPrices.text() else None
@@ -65,8 +85,8 @@ class AddStockDialog(QtWidgets.QDialog):
                     self.ui.labelError.setText(Formatter.get_error_text('Error: Stock already in {0}'.format(self.stocks[ii].group)))
                     self.ui.labelError.show()
                     return
-            data = requests.get('https://query1.finance.yahoo.com/v10/finance/quoteSummary/{0}?modules=financialData'.format(ticker)).json()
-            if data['quoteSummary']['error']:
+            data = requests.get('https://query1.finance.yahoo.com/v8/finance/chart/{}'.format(ticker)).json()
+            if data['chart']['error']: # if no error, then the ticker is valid
                 self.ui.labelError.setText(Formatter.get_error_text('Error: Invalid Ticker'))
                 self.ui.labelError.show()
                 return

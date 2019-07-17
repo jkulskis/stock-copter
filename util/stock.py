@@ -112,7 +112,10 @@ class Stock:
         else:
             return None
 
-    def get_price(self):
+    def update_price(self):
+        if '^' in self.ticker:
+            self.update_daily()
+            return
         data = requests.get('https://financialmodelingprep.com/api/v3/stock/real-time-price/{0}'.format(self.ticker)).json()
         if 'price' in data:
             self.currentPrice = data['price'] # Not all of the symbols are updated on this API, so check to make sure it went through, and fallback to IEX
@@ -141,6 +144,9 @@ class Stock:
     
     # takes ~200-300ms with good wifi
     def update_all(self):
+        if '^' in self.ticker:
+            self.update_historical() # only update the historical for ^ tickers (DOW, NASDAQ, etc)
+            return
         self.update_v10() # gets current price as well
         self.update_historical()
         self.update_shares()
@@ -168,7 +174,6 @@ class Stock:
     def update_daily(self):
         url = 'https://query1.finance.yahoo.com/v8/finance/chart/{0}?symbol={0}&period1={1}&period2={2}&interval=1d' \
                 .format(self.ticker, int((datetime.now() - timedelta(days=4)).timestamp()), int(time.time())) # go 4 days in the passed to account for weekends + holidays
-        print(url)
         data = requests.get(url).json()
         if 'chart' in data:
             data = data['chart'] if not data['chart']['error'] else None
@@ -177,6 +182,8 @@ class Stock:
             for k, v in data.items():
                 if k in self.daily_attr:
                     setattr(self, k, Formatter.format_number(float(v[-1])))
+                if k =='close':
+                    setattr(self, 'currentPrice', Formatter.format_number(float(v[-1])))
             return 0
         else:
             return 1
@@ -228,6 +235,8 @@ class Stock:
             for k, v in data['indicators']['quote'][0].items(): 
                 if k in self.daily_attr: # set the daily attributes to so that we don't have to do another request
                     setattr(self, k, Formatter.format_number(float(v[-1])))
+                    if k =='close':
+                        setattr(self, 'currentPrice', Formatter.format_number(float(v[-1])))
                 self.historical_data['price_data'][k] = [Formatter.format_number(float(d)) if d else None for d in v] # Might not have data for this timestamp...if so then set to None
             if 'events' in data and 'dividends' in data['events']: # really only need events key check, but I may decide to use splits as an event later
                 latest_timestamp = 0

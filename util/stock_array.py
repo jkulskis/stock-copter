@@ -6,6 +6,14 @@ import time
 class StockArray:
 
     def __init__(self, stocks=[]):
+        """init method
+        
+        Keyword Arguments:
+            stocks {list} -- list of stocks to initialize the stock array with (default: {[]})
+        
+        Raises:
+            ValueError: If any of the items in the stocks param are not Stock objects
+        """
         if isinstance(stocks, list):
             self.stocks = stocks
         elif isinstance(stocks, Stock):
@@ -64,6 +72,13 @@ class StockArray:
         self.stocks.remove(item)
 
     def update_price(self):
+        """Updates the prices for all of the stocks.
+
+        If there are <= 10 stocks, then IEX is used. Otherwise, since IEX only allows 10 stock requests at a time for prices, 
+        FinancialModelingPrep is used since all of the stocks on the market can be requested at once, which is still more
+        efficient than multiple requests with IEX. FinancialModelingPrep allows for selecting tickers, but this is buggy and
+        does not have every stock, so all stocks are requested to avoid an error being thrown.
+        """
         if self.stocks:
             if len(self.stocks) > 10: # slower, but only one request, so we can just grab all of the stocks from the below link...iex has a 10 stock limit
                 data = requests.get('https://financialmodelingprep.com/api/v3/company/stock/list').json()
@@ -81,55 +96,64 @@ class StockArray:
                 for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
                     self.stocks[ii].currentPrice = data[ii]['price']
                 self.update_shares()
-        return 0
+            for stock in self.stocks:
+                print(stock.ticker)
+                if '^' in stock.ticker:
+                    stock.update_daily()
 
     def update_shares(self):
+        """Updates the shares for all of the stocks.
+        
+        Returns:
+            [type] -- [description]
+        """
         for stock in self.stocks:
             stock.update_shares()
-        return 0
 
-    def update_financials(self):
-        for stock in self.stocks:
-            stock.update_financials()
-        return 0
-    
-    def update_key_stats(self):
-        for stock in self.stocks:
-            stock.update_key_stats()
-        return 0
-    
     def update_v10(self, modules=None):
+        """Updates the yahoo finance v10 API attributes for all of the stocks.
+        
+        Keyword Arguments:
+            modules {[str, list]} -- Module or list of modules to update. Must be in ['financialData', 'defaultKeyStatistics'] (default: {None})
+        """
         if modules:
             for stock in self.stocks:
                 stock.update_v10(modules)
         else:
             for stock in self.stocks:
                 stock.update_v10()
-        return 0
 
     def update_daily(self):
+        """Updates the daily attributes for all of the stocks.
+        """
         for stock in self.stocks:
             stock.update_daily()
     
-    def update_historical(self, timeframe=1):
+    def update_historical(self, timeframe=365):
+        """Updates the historical data for all of the stocks.
+        
+        Keyword Arguments:
+            timeframe {int} -- Timeframe in days to update historical data for (default: {365})
+        """
         for stock in self.stocks:
             stock.update_historical(timeframe)
 
-    # def update_historical(self):
-
-    def update_recent(self):
-        if not self.last_refresh or time.time() - self.last_refresh > self.refresh_time:
-            self.update_v10()
-            self.update_daily()
-            self.last_refresh = time.time()
-            return 0 # everything updated
-        return int(time.time() - self.last_refresh) # not enough time has passed since the last update, so keep previous data
-
     def update_all(self):
+        """Updates all of the attributes for all of the stocks.
+
+        This also updates the shares since the stock update_all method updates
+        the shares of the stock
+        """
         for stock in self.stocks:
             stock.update_all()
     
     def populate_widgets(self, column=None, evaluations=None):
+        """Populates the stock widgets with header expression evaluations for a specific header.
+        
+        Keyword Arguments:
+            column {int} -- index of the header's column (default: {None})
+            evaluations {list} -- Evaluations of the expression for each stock, in an order respective to self.stocks (default: {None})
+        """
         for ii in range(len(self)):
             if self.stocks[ii].widget:
                 self.stocks[ii].widget.setText(column, evaluations[ii])

@@ -23,6 +23,8 @@ class UpdateThread():
         self.timer.start(1000*conf['preferences']['refresh_time'])
 
     def update_ui(self):
+        """Updates the UI and stocks. Only updates all the stock properties every 20 minutes
+        """
         if not self.update_all_time:
             self.update_all()
         else:
@@ -34,6 +36,8 @@ class UpdateThread():
                 self.parent.populate_tree_widget()
     
     def update_all(self):
+        """Updates all of the stock properties
+        """
         print('Updating all...')
         self.stocks.update_all()
         self.update_all_time = time.time()
@@ -64,6 +68,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize(934, 502)
     
     def reset_ui(self):
+        """Resets the UI. 
+        
+        There were problems with resetting the header view when an object is removed, so this method is called
+        when a header item is removed, as well as if core settings are changed.
+        """
         self.ui.setupUi(self)
         label_font = QtGui.QFont(conf['preferences']['font']['family'])
         label_font.setPointSize(13)
@@ -75,6 +84,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_actions()
     
     def setup_tree_widget(self):
+        """Sets up and populates the tree widget that displays all of the stocks.
+        """
         self.portfolio_tree = QtWidgets.QTreeWidgetItem(self.ui.treeWidget)
         self.portfolio_tree.setText(0, 'Portfolio')
         self.portfolio_tree.setFlags(self.portfolio_tree.flags() ^ QtCore.Qt.ItemIsSelectable)
@@ -85,6 +96,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.populate_tree_widget()
 
     def setup_header(self):
+        """Sets up a QHeaderView and connects it to the tree widget
+        """
         self.headerView = QtWidgets.QHeaderView(QtCore.Qt.Orientation.Horizontal)
         self.headerView.setSectionsMovable(True)
         self.headerView.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
@@ -95,18 +108,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.headerView.setFont(header_font)
 
     def closeEvent(self, event):
+        """Catches the close event so that the config settings can be properly dumped when the program exits.
+        
+        Arguments:
+            event {QEvent} -- Close event of the MainWindow
+        """
         self.update_thread.timer.stop() # stop the timer to avoid hang
         del self.update_thread.timer
         self.check_headers() # check to see if the header positions were changed by the user before closing
         conf.stocks = self.stocks # update the config stocks...only tickers are stored and there is no reference in conf (to avoid import loops with the Stock class)
         conf.dump_settings() # dump settings before quitting
     
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Escape: # may delete later, makes for faster testing though
-            self.close()
+    # def keyPressEvent(self, event):
+    #     """Catches a key press.
+        
+    #     Arguments:
+    #         event {QEvent} -- Key press event of the MainWindow
+    #     """
+    #     if event.key() == QtCore.Qt.Key_Escape: # may delete later, makes for faster testing though
+    #         self.close()
     
     def update_actions(self):
-        self.ui.actionAdd_Stock.triggered.connect(self.add_stock)
+        """Updates all of the actions for the UI
+        """
+        self.ui.actionAdd_Stock.triggered.connect(self.open_stock_editor)
         self.ui.actionCreate_Expression.triggered.connect(self.modify_expression)
         self.ui.actionEdit_Headers.triggered.connect(self.open_header_editor)
         self.ui.actionPreferences.triggered.connect(self.open_preferences)
@@ -114,11 +139,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.treeWidget.customContextMenuRequested.connect(self.treeWidget_context_menu)
         self.ui.treeWidget.itemActivated.connect(self.open_stock_view)
         self.headerView.customContextMenuRequested.connect(self.headerView_context_menu)
-        self.ui.pushButtonAddStock.clicked.connect(self.add_stock)
+        self.ui.pushButtonAddStock.clicked.connect(self.open_stock_editor)
         self.ui.pushButtonExpressionCreator.clicked.connect(self.modify_expression)
         self.ui.pushButtonHeaderEditor.clicked.connect(self.open_header_editor)
     
     def show_about(self):
+        """Shows an about messagebox
+        """
         msg_box = QtWidgets.QMessageBox()
         msg_box.setText('<font size="+2">Created by <a href="https://github.com/jkulskis/" size="+2">@jkulskis</a></font> <td>\
                         <font size="-1">Copyright © 2019 John Mikulskis (GNU GPL)</font>')
@@ -128,11 +155,19 @@ class MainWindow(QtWidgets.QMainWindow):
         msg_box.exec_()
 
     def open_preferences(self):
+        """Opens the preferences dialog for the user to edit preferences
+        """
         preferences_dialog = PreferencesDialog(self.headers)
         if preferences_dialog.exec_():
             self.reset_ui()
 
     def check_headers(self):
+        """Checks the current place of the headers against the config.
+
+        If headers are moved around in the QHeaderView, these changes are not reflected in the config.
+        This method will move around the config headers so that everything matches the current state
+        of the UI.
+        """
         column_count = len(self.headers)
         for ii in range(column_count):
             logical_index = self.headerView.logicalIndex(ii)
@@ -142,8 +177,19 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.headers[ii], self.headers[jj] = self.headers[jj], self.headers[ii] # swap them
                         break
 
-    def modify_expression(self, event=None, index=None, policy=None, edit=False, old_conditional=None, old_custom_variable_name=None, old_custom_description=None):
-        if policy is None or policy == 'all_fields':
+    def modify_expression(self, event=None, index=None, policy='all_fields', edit=False, old_conditional=None, old_custom_variable_name=None, old_custom_description=None):
+        """Modifies or Creates expressions by opening up the Expression Creator Dialog, checking the response, and dealing with it accordingly.
+        
+        Keyword Arguments:
+            event {QEvent} -- If an event is attached to the method call (default: {None})
+            index {int} -- If a header is being edited or created, this holds the index of the clicked column (default: {None})
+            policy {str} --  The type of expression dialog to open. Can be in ['all_fields', 'edit_header', 'add_header', 'conditonal', 'custom'] (default: {all_fields})
+            edit {bool} -- If True, an expression is being modified rather than created (default: {False})
+            old_conditional {str} -- The old conditional equation, if one is being modified (default: {None})
+            old_custom_variable_name {str} -- The old custom variable name, if one is being modified (default: {None})
+            old_custom_description {str} -- The old custom variable description, if one is being modified (default: {None})
+        """
+        if policy == 'all_fields':
             expression_creator_dialog = ExpressionCreatorDialog(policy='all_fields')
         elif policy == 'edit_header':
             old_expression = self.headers[index]['eq']
@@ -196,49 +242,70 @@ class MainWindow(QtWidgets.QMainWindow):
             self.populate_tree_widget()
 
     def open_stock_view(self):
+        """Opens the stock viewer widget to show the graph view and more details of a stock
+        """
         selected = self.get_selected()
         if selected: # will be none if portfolio tree or watch tree was double clicked
             stock_viewer_dialog = StockViewerWidget(selected[0]['stock'])
             stock_viewer_dialog.show()
 
     def open_header_editor(self):
+        """Opens the header editor dialog for the user to edit headers and their conditionals
+        """
         header_editor_dialog = HeaderEditorDialog(self.headers)
         header_editor_dialog.exec_()
         self.reset_ui()
 
     def get_selected(self):
+        """Gets and returns the selected item's widget and respective stock
+        
+        Returns:
+            [dict] -- {'widget' : stock.widget, 'stock' : stock}
+        """
         selected_items = []
         for stock in self.stocks:
             if stock.widget.isSelected():
                 selected_items.append({'widget' : stock.widget, 'stock' : stock})
         return selected_items
 
-    def add_stock(self):
-        add_stock_dialog = AddStockDialog(self.stocks)
+    def open_stock_editor(self, stock=None):
+        """Opens the stock editor dialog to either edit or add a stock
+        
+        Keyword Arguments:
+            stock {Stock} -- The stock to edit, if editing rather than adding (default: {None})
+        """
+        add_stock_dialog = AddStockDialog(stocks=self.stocks, stock=stock)
         if add_stock_dialog.exec_():
-            self.populate_tree_widget() # populate even if no values for the stock yet so it doesn't seem like it is lagging
-            self.stocks[-1].update_all()
-            self.populate_tree_widget()
-    
-    def edit_stock(self, stock):
-        add_stock_dialog = AddStockDialog(self.stocks, stock)
-        if add_stock_dialog.exec_():
-            stock.update_shares()
-            self.populate_tree_widget()
+            if stock: # stock is being edited
+                stock.update_shares()
+                self.populate_tree_widget()
+            else: # stock is being added
+                self.populate_tree_widget() # populate even if no values for the stock yet so it doesn't seem like it is lagging
+                self.stocks[-1].update_all()
+                self.populate_tree_widget()
 
     def remove_stock(self):
+        """Removes the selected stock(s) from self.stocks as well as the tree widget
+        """
         items = self.get_selected()
         for item in items:
             item['widget'].parent().removeChild(item['widget'])
             self.stocks.remove(item['stock'])
 
-    def clear_tree_view(self):
+    def clear_tree_widget(self):
+        """clears the tree widget
+        """
         root = self.ui.treeWidget.invisibleRootItem()
         child_count = root.childCount()
         for ii in range(child_count):
             root.child(ii).takeChildren()
 
     def treeWidget_context_menu(self, event):
+        """Handles the treeWidget custom context menu
+        
+        Arguments:
+            event {QEvent} -- The event passed in by the click of the context menu
+        """
         menu = QtWidgets.QMenu(self.ui.treeWidget)
         remove_stock = QtWidgets.QAction("Remove Stock")
         add_stock = QtWidgets.QAction("Add Stock")
@@ -253,11 +320,16 @@ class MainWindow(QtWidgets.QMainWindow):
         if action == remove_stock:
             self.remove_stock()
         elif action == add_stock:
-            self.add_stock()
+            self.open_stock_editor()
         elif action == edit_stock:
-            self.edit_stock(selected[0]['stock'])
+            self.open_stock_editor(stock=selected[0]['stock'])
     
     def headerView_context_menu(self, event):
+        """Handles the headerView custom context menu
+        
+        Arguments:
+            event {QEvent} -- The event passed in by the click of the context menu
+        """
         self.ui.treeWidget.clearSelection()
         logical_index = self.headerView.logicalIndexAt(event.x())
         menu = QtWidgets.QMenu(self.headerView)
@@ -281,11 +353,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.remove_header(logical_index)
     
     def remove_header(self, index):
+        """removes a header from the headerView and resets the UI
+        
+        Arguments:
+            index {int} -- The index of the headerView column to remove
+        """
         del self.headers[index]
         self.reset_ui()
 
     def populate_tree_widget(self):
-        self.clear_tree_view()
+        """Populates the tree widget with the stocks under their respective groups (Watchlist, Portfolio)
+        """
+        self.clear_tree_widget()
         for stock in self.stocks:
             if stock.group == 'Portfolio':
                 stock.widget = QtWidgets.QTreeWidgetItem(self.portfolio_tree)
@@ -297,6 +376,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_tree()
     
     def update_tree(self):
+        """Updates the tree widget.
+
+        The main expressions and conditionals for each header are evaluated for the stocks, and the tree widget is 
+        populated with the resulting evaluations
+        """
         for ii in range(len(self.headers)):
             evaluations = Formatter.evaluate_eq(parsed_eq=self.headers[ii]['parsed_eq'], stocks=self.stocks, string=True)
             self.stocks.populate_widgets(column=ii, evaluations=evaluations)
@@ -308,12 +392,24 @@ class MainWindow(QtWidgets.QMainWindow):
                         if conditional_evaluations[jj] and not already_applied[jj]: # apply the first conditional that is not None
                             already_applied[jj] = True
                             self.stocks[jj].widget.setBackground(ii, self.color(color=conditional_evaluations[jj]))
-                            self.stocks[jj].widget.setForeground(ii, self.color(color='BLACK'))
+                            self.stocks[jj].widget.setForeground(ii, self.color(color='Black'))
     
     def color(self, r=0, g=0, b=0, color=None):
+        """Returns a QBrush with the specified color. Evaluates RGB color if the color parameter is not specified
+        
+        Keyword Arguments:
+            r {int} -- Red value of the RGB triplet (default: {0})
+            g {int} -- Green value of the RGB triplet (default: {0})
+            b {int} -- Blue value of the RGB triplet (default: {0})
+            color {str} -- string that contains one of the supported colors (default: {None})
+        
+        Returns:
+            [type] -- [description]
+        """
         if not color:
             return QtGui.QBrush(QtGui.QColor(r, g, b))
         else:
+            color = color.upper()
             if 'BLACK' in color:
                 return QtGui.QBrush(QtGui.QColor(0, 0, 0))
             elif 'RED' in color:
