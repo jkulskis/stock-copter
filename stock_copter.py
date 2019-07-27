@@ -2,6 +2,7 @@ from util.config import conf
 from forms.MainWindow import MainWindow
 from PySide2.QtWidgets import QApplication
 from PySide2.QtCore import QFile, QTextStream, QCoreApplication, Qt
+from PySide2.QtGui import QIcon
 import sys
 import os
 import qdarkstyle
@@ -15,6 +16,7 @@ if __name__ == '__main__':
             os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
             app = QApplication()
             app.setAttribute(Qt.AA_EnableHighDpiScaling)
+            app.setWindowIcon(QIcon('helicopter.ico'))
             master = MainWindow()
             master.show()
         except RuntimeError:
