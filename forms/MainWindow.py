@@ -10,7 +10,11 @@ from forms.HeaderEditor import HeaderEditorDialog
 from forms.StockViewerWidget import StockViewerWidget
 from forms.PreferencesDialog import PreferencesDialog
 from threading import Thread
+from requests import Timeout, ConnectionError
+import requests
+import json
 import time
+import sys
 
 class UpdateThread():
 
@@ -49,11 +53,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
+        self.version = None
+        self.check_connection()
         #---------------------
         #-----Config Data-----
         #---------------------
         if conf['stocks']:
-            self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
+            if isinstance(conf['stocks'], dict): # old version...convert if this is the case
+                self.stocks = StockArray([Stock(ticker=ticker, **conf['stocks'][ticker]) for ticker in conf['stocks']])
+            else:
+                self.stocks = StockArray([Stock(**stock) for stock in conf['stocks']])
         else:
             self.stocks = StockArray()
         self.headers = conf['tree_view']['headers']
@@ -69,12 +78,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reset_ui()
         self.resize(934, 502)
     
+    def check_connection(self):
+        """Checks the connection and grabs some application data
+        """
+        try:
+            check = requests.get('http://jkulskis.com/apps/stock_copter.json').json()
+            self.version = check['version']
+            if check['status'] != 0:
+                QtWidgets.QMessageBox.critical(self, 'ERROR', check['message'], QtWidgets.QMessageBox.Ok)
+                sys.exit(-1)
+        except ConnectionError:
+            QtWidgets.QMessageBox.critical(self, 'ERROR', 'WiFi connection is needed to run Stock Copter...exiting', QtWidgets.QMessageBox.Ok)
+            sys.exit(1)
+        except (Timeout, json.JSONDecodeError): # if my site is down
+            self.version = 0.0
+            try:
+                requests.get('https://www.google.com/')
+            except ConnectionError:
+                QtWidgets.QMessageBox.critical(self, 'ERROR', 'WiFi connection is needed to run Stock Copter...exiting', QtWidgets.QMessageBox.Ok)
+                sys.exit(1)
+
     def reset_ui(self):
         """Resets the UI. 
         
         There were problems with resetting the header view when an object is removed, so this method is called
         when a header item is removed, as well as if core settings are changed.
         """
+        self.check_headers()
         self.ui.setupUi(self)
         label_font = QtGui.QFont(conf['preferences']['font']['family'])
         label_font.setPointSize(13)
@@ -96,13 +126,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.watch_tree.setFlags(self.watch_tree.flags() ^ QtCore.Qt.ItemIsSelectable)
         self.setup_header()
         self.populate_tree_widget()
+        for ii in range(len(self.headers)):
+            # Try to use the user defined size first
+            if 'size' not in self.headers[ii] or not self.headers[ii]['size']:
+                # Make header view resize, get content widths, then make flexible and set to these widths
+                self.headerView.setSectionResizeMode(ii, QtWidgets.QHeaderView.ResizeToContents)
+                self.headers[ii]['size'] = self.headerView.sectionSize(ii) * 1.7
+            self.headerView.setSectionResizeMode(ii, QtWidgets.QHeaderView.Interactive)
+            self.headerView.resizeSection(ii, self.headers[ii]['size'])
 
     def setup_header(self):
         """Sets up a QHeaderView and connects it to the tree widget
         """
         self.headerView = QtWidgets.QHeaderView(QtCore.Qt.Orientation.Horizontal)
         self.headerView.setSectionsMovable(True)
-        self.headerView.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.headerView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.treeWidget.setHeader(self.headerView)
         header_font = QtGui.QFont(conf['preferences']['font']['family'])
@@ -140,17 +177,77 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.actionAbout.triggered.connect(self.show_about)
         self.ui.treeWidget.customContextMenuRequested.connect(self.treeWidget_context_menu)
         self.ui.treeWidget.itemActivated.connect(self.open_stock_view)
+        self.ui.treeWidget.installEventFilter(self)
         self.headerView.customContextMenuRequested.connect(self.headerView_context_menu)
         self.ui.pushButtonAddStock.clicked.connect(self.open_stock_editor)
         self.ui.pushButtonExpressionCreator.clicked.connect(self.modify_expression)
         self.ui.pushButtonHeaderEditor.clicked.connect(self.open_header_editor)
     
+    def eventFilter(self, object, event):
+        if object is self.ui.treeWidget:
+            if type(event) == QtCore.QChildEvent and type(event.child()) == QtCore.QObject:
+                self.check_stock_order()
+        event.accept()
+        return False
+    
+    def check_stock_order(self):
+        child_moves = []
+        for ii in range(len(self.stocks)):
+            while True:
+                self.friend_group = self.stocks[ii].group
+                self.enemy_group = 'Portfolio' if self.friend_group == 'Watchlist' else 'Watchlist'
+                if self.stocks[ii].widget.parent() is None:
+                    self.stocks.append(self.stocks.pop(ii)) # move to end of the list if invalid move
+                    return self.reset_ui()
+                elif self.stocks[ii].widget.parent().text(0) == self.friend_group:
+                    break
+                elif self.stocks[ii].widget.parent().text(0) == self.enemy_group:
+                    self.stocks.append(self.stocks.pop(ii)) # move to end of the list if invalid move
+                    return self.reset_ui()
+                elif self.stocks[ii].widget.parent().parent().text(0) == self.enemy_group:
+                    self.stocks.append(self.stocks.pop(ii)) # move to end of the list if invalid move
+                    return self.reset_ui()
+                else:
+                    for jj in range(len(self.stocks)):
+                        if self.stocks[jj].widget.takeChild(0):
+                            child_moves.append((jj, ii))
+                            break
+                    break
+        if child_moves:
+            for indexes in reversed(child_moves):
+                self.stocks.insert(indexes[0], self.stocks.pop(indexes[1]))
+            self.reset_ui()
+        # Make sure that all of the stocks are in order by comparing custom widget types
+        reset_ui = False
+        portfolio_stocks = self.stocks.portfolio_stocks()
+        watchlist_stocks = self.stocks.watchlist_stocks()
+        for ii in range(self.portfolio_tree.childCount()):
+            if self.portfolio_tree.child(ii).type() != portfolio_stocks[ii].widget.type():
+                reset_ui = True
+                for jj in range(ii, len(portfolio_stocks)):
+                    if self.portfolio_tree.child(ii).type() == portfolio_stocks[jj].widget.type():
+                        portfolio_stocks[ii], portfolio_stocks[jj] = \
+                            portfolio_stocks[jj], portfolio_stocks[ii] # swap them
+                        break
+        for ii in range(self.watch_tree.childCount()):
+            if self.watch_tree.child(ii).type() != watchlist_stocks[ii].widget.type():
+                reset_ui = True
+                for jj in range(ii, len(watchlist_stocks)):
+                    if self.watch_tree.child(ii).type() == watchlist_stocks[jj].widget.type():
+                        watchlist_stocks[ii], watchlist_stocks[jj] = \
+                            watchlist_stocks[jj], watchlist_stocks[ii] # swap them
+                        break
+        if reset_ui:
+            self.stocks = StockArray(portfolio_stocks + watchlist_stocks)
+            return self.reset_ui()
+
     def show_about(self):
         """Shows an about messagebox
         """
         msg_box = QtWidgets.QMessageBox()
-        msg_box.setText('<font size="+2">Created by <a href="https://github.com/jkulskis/" size="+2">@jkulskis</a></font> <td>\
-                        <font size="-1">Copyright © 2019 John Mikulskis (GNU GPL)</font>')
+        msg_box.setText('<font size="+2">Created by <a href="https://github.com/jkulskis/" size="+2">@jkulskis</a></font> <br /> \
+                        <font size="-1">Copyright © 2019 John Mikulskis (GNU GPL)</font> <br /> \
+                        <font size="-2">Version: {}</font>'.format(self.version))
         msg_box.setWindowTitle('About')
         msg_box.setTextFormat(QtCore.Qt.RichText)
         msg_box.setStandardButtons(QtWidgets.QMessageBox.Close)
@@ -170,6 +267,8 @@ class MainWindow(QtWidgets.QMainWindow):
         This method will move around the config headers so that everything matches the current state
         of the UI.
         """
+        if self.headerView is None:
+            return
         column_count = len(self.headers)
         for ii in range(column_count):
             logical_index = self.headerView.logicalIndex(ii)
@@ -178,6 +277,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     if self.headers[jj]['text'] == self.ui.treeWidget.headerItem().text(logical_index):
                         self.headers[ii], self.headers[jj] = self.headers[jj], self.headers[ii] # swap them
                         break
+            # update sizes
+            self.headers[ii]['size'] = self.headers[ii]['size'] = self.headerView.sectionSize(ii)
+
 
     def modify_expression(self, event=None, index=None, policy='all_fields', edit=False, old_conditional=None, old_custom_variable_name=None, old_custom_description=None):
         """Modifies or Creates expressions by opening up the Expression Creator Dialog, checking the response, and dealing with it accordingly.
@@ -214,8 +316,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 new_header['eq'] = expression_creator_dialog.expression
                 new_header['parsed_eq'] = expression_creator_dialog.parsed_expression
                 if edit:
+                    new_header['size'] = self.headers[index]['size']
                     self.headers[index] = new_header
                 else:
+                    new_header['size'] = 0
                     self.headers.insert(index, new_header)
             if expression_creator_dialog.custom_variable_name:
                 new_variable = dict.fromkeys(('true_casing', 'eq', 'parsed_eq'))
@@ -367,13 +471,18 @@ class MainWindow(QtWidgets.QMainWindow):
         """Populates the tree widget with the stocks under their respective groups (Watchlist, Portfolio)
         """
         self.clear_tree_widget()
+        custom_type = 1000
         for stock in self.stocks:
             if stock.group == 'Portfolio':
-                stock.widget = QtWidgets.QTreeWidgetItem(self.portfolio_tree)
+                stock.widget = QtWidgets.QTreeWidgetItem(self.portfolio_tree, type=custom_type)
             if stock.group == 'Watchlist':
-                stock.widget = QtWidgets.QTreeWidgetItem(self.watch_tree)
+                stock.widget = QtWidgets.QTreeWidgetItem(self.watch_tree, type=custom_type)
+            stock.widget.setFlags(stock.widget.flags() ^ QtCore.Qt.ItemIsDropEnabled)
+            custom_type += 1
         for ii in range(len(self.headers)):
             self.ui.treeWidget.headerItem().setText(ii, self.headers[ii]['text'])
+            for stock in self.stocks:
+                stock.widget.setTextAlignment(ii, QtCore.Qt.AlignRight)
         self.ui.treeWidget.expandAll()
         self.update_tree()
     
@@ -415,14 +524,14 @@ class MainWindow(QtWidgets.QMainWindow):
             if 'BLACK' in color:
                 return QtGui.QBrush(QtGui.QColor(0, 0, 0))
             elif 'RED' in color:
-                return QtGui.QBrush(QtGui.QColor(255, 0, 0))
+                return QtGui.QBrush(QtGui.QColor(206, 103, 103))
             elif 'GREEN' in color:
-                return QtGui.QBrush(QtGui.QColor(0, 255, 0))
+                return QtGui.QBrush(QtGui.QColor(131, 226, 124))
             elif 'ORANGE' in color:
-                return QtGui.QBrush(QtGui.QColor(255, 155, 0))
+                return QtGui.QBrush(QtGui.QColor(230, 165, 79))
             elif 'YELLOW' in color:
-                return QtGui.QBrush(QtGui.QColor(255, 255, 0))
+                return QtGui.QBrush(QtGui.QColor(217, 220, 126))
             elif 'CYAN' in color:
-                return QtGui.QBrush(QtGui.QColor(0, 255, 255))
+                return QtGui.QBrush(QtGui.QColor(148, 229, 229))
             elif 'PINK' in color:
-                return QtGui.QBrush(QtGui.QColor(255, 192, 203))
+                return QtGui.QBrush(QtGui.QColor(232, 152, 211))

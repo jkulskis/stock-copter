@@ -50,6 +50,7 @@ class Ui_StockViewerWidget(object):
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.tableWidget = QtWidgets.QTableWidget(StockViewerWidget)
+        self.tableWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.tableWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(0)

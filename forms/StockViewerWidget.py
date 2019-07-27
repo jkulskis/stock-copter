@@ -1,5 +1,6 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 from forms.StockViewerWidgetUI import Ui_StockViewerWidget
+from util.config import conf
 from util.stock import Stock
 from util.format import Formatter
 from util.config import conf
@@ -24,6 +25,14 @@ class StockViewerWidget(QtWidgets.QWidget):
 
     def __init__(self, stock):
         super(StockViewerWidget, self).__init__()
+        if conf['preferences']['theme'] == 'light':
+            pg.setConfigOption('background', 'w')
+            pg.setConfigOption('foreground', 'k')
+            self.draw_line_color = 'k'
+        else:
+            pg.setConfigOption('background', 'k')
+            pg.setConfigOption('foreground', 'd')
+            self.draw_line_color = 'd'
         self.ui = Ui_StockViewerWidget()
         self.ui.setupUi(self)
         self.ui.labelGraph.hide()
@@ -182,8 +191,12 @@ class StockViewerWidget(QtWidgets.QWidget):
                     self.prices.append(self.historical_data['price_data']['close'][ii])
             self.adjust_timeframes() # get rid of large gaps for when trading is not going on
             self.axisX.set_times(timestamps=self.timestamps, time_padding=self.time_padding)
-            self.ui.graphicsView.plot(x=self.timestamps, y=self.prices, title='Price data: {}'.format(self.ui.comboBox.currentText()), 
-                                    pen=conf['preferences']['graph_color'], clear=True)
+            self.ui.graphicsView.plot(x=self.timestamps, 
+                                        y=self.prices, 
+                                        title='Price data: {}'.format(self.ui.comboBox.currentText()), 
+                                        pen=pg.mkPen(conf['preferences']['graph_settings']['color'], 
+                                        width=conf['preferences']['graph_settings']['line_width']), 
+                                        clear=True)
             self.ui.graphicsView.getPlotItem().enableAutoScale()
             self.cross_hair(self.ui.graphicsView.getPlotItem())
             self.last_comboBox_index = self.ui.comboBox.currentIndex()
@@ -202,7 +215,7 @@ class StockViewerWidget(QtWidgets.QWidget):
     def update_follow_line(self):
         if self.follow_segment and self.clicks[0] != self.last_coords: # draw a new follow segment if self.follow_segment == True or if self.follow_segment already exists
             self.ui.graphicsView.getPlotItem().removeItem(self.follow_segment)
-            self.follow_segment = pg.LineSegmentROI([self.clicks[0], self.last_coords], pen=(4,9))
+            self.follow_segment = pg.LineSegmentROI([self.clicks[0], self.last_coords], pen=pg.mkPen(self.draw_line_color, width=2))
             self.ui.graphicsView.getPlotItem().addItem(self.follow_segment)
 
     def adjust_timeframes(self):
@@ -249,12 +262,6 @@ class StockViewerWidget(QtWidgets.QWidget):
                     time.strftime('%m-%e-%y %H:%M', time.localtime(padded_time)), Formatter.format_number(mousePoint.y(), string=True)))
                 vLine.setPos(self.last_coords[0])
                 hLine.setPos(self.last_coords[1])
-                # if self.follow_segment: # draw a new follow segment if self.follow_segment == True or if self.follow_segment already exists
-                #     if self.follow_segment_last_coords[0] is None or abs(self.follow_segment_last_coords[0] - mousePoint.x()) > self.line_threshold_time or abs(self.follow_segment_last_coords[1] - mousePoint.y()) > self.line_threshold_price:
-                #         self.follow_segment_last_coords = (mousePoint.x(), mousePoint.y())
-                #         self.ui.graphicsView.getPlotItem().removeItem(self.follow_segment)
-                #         self.follow_segment = pg.LineSegmentROI([self.clicks[0], self.follow_segment_last_coords], pen=(4,9))
-                #         self.ui.graphicsView.getPlotItem().addItem(self.follow_segment)
         plot_wg.getViewBox().setAutoVisible(y=True)
         proxy = pg.SignalProxy(plot_wg.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)    
         plot_wg.proxy = proxy
@@ -266,9 +273,6 @@ class StockViewerWidget(QtWidgets.QWidget):
             return
         def onClick(evt):
             if plot_wg.sceneBoundingRect().contains(evt.pos()):
-                # mousePoint = vb.mapSceneToView(evt.pos()) # For some reason this is buggy...use mouse over coords 
-                # x = mousePoint.x()
-                # y = mousePoint.y()
                 if len(self.clicks) == 0:  # First mouse click - ONLY register coordinates
                     print("First click!")
                     self.clicks.append((self.last_coords[0], self.last_coords[1]))
@@ -284,7 +288,7 @@ class StockViewerWidget(QtWidgets.QWidget):
                         return
                     self.clicks.append((self.last_coords[0], self.last_coords[1]))
                     print("...drawing line")
-                    line = pg.LineSegmentROI(self.clicks, pen=(4,9)) # Draw line connecting the two self.clicks
+                    line = pg.LineSegmentROI(self.clicks, pen=pg.mkPen(self.draw_line_color, width=2)) # Draw line connecting the two self.clicks
                     self.line_segments.append(line) 
                     self.ui.graphicsView.getPlotItem().addItem(line)
                     self.exit_line_draw_mode()

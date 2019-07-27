@@ -65,11 +65,26 @@ class StockArray:
     def __repr__(self):
         return (str(self.stocks))
     
+    def copy(self):
+        return self.stocks.copy()
+
     def pop(self, index):
         return self.stocks.pop(index)
     
+    def append(self, item):
+        self.stocks.append(item)
+    
     def remove(self, item):
         self.stocks.remove(item)
+    
+    def insert(self, index, item):
+        self.stocks.insert(index, item)
+    
+    def watchlist_stocks(self):
+        return [stock for stock in self.stocks if stock.group == 'Watchlist']
+    
+    def portfolio_stocks(self):
+        return [stock for stock in self.stocks if stock.group == 'Portfolio']
 
     def update_price(self):
         """Updates the prices for all of the stocks.
@@ -80,9 +95,17 @@ class StockArray:
         does not have every stock, so all stocks are requested to avoid an error being thrown.
         """
         if self.stocks:
-            if len(self.stocks) > 10: # slower, but only one request, so we can just grab all of the stocks from the below link...iex has a 10 stock limit
+            company_stocks = []
+            market_stocks = []
+            for stock in self.stocks:
+                if '^' in stock.ticker:
+                    company_stocks.append(stock)
+                else:
+                    market_stocks.append(stock)
+            company_stocks = [stock for stock in self.stocks if '^' not in stock.ticker]
+            if len(company_stocks) > 10: # slower, but only one request, so we can just grab all of the stocks from the below link...iex has a 10 stock limit
                 data = requests.get('https://financialmodelingprep.com/api/v3/company/stock/list').json()
-                for stock in self.stocks:
+                for stock in company_stocks:
                     for item in data['symbolsList']:
                         if item['symbol'] == stock.ticker:
                             stock.currentPrice = item['price']
@@ -90,16 +113,14 @@ class StockArray:
                                 stock.profit = stock.currentPrice*stock.totalShares - stock.averageSharePrice*stock.totalShares
                             break 
             else:
-                ticker_string = ''.join('{0},'.format(stock.ticker) for stock in self.stocks)
+                ticker_string = ''.join('{0},'.format(stock.ticker) for stock in company_stocks)
                 # ex format: [{"symbol":"WORK","price":35.78,"size":100,"time":1561406386025},{"symbol":"FB","price":192.59,"size":100,"time":1561406399108}]
                 data = requests.get('https://api.iextrading.com/1.0/tops/last?symbols={0}'.format(ticker_string)).json() # array of dicts with keys: symbol, price
-                for ii in range(len(self.stocks)):  # should be in the order we requested, so use index instead of key lookup
-                    self.stocks[ii].currentPrice = data[ii]['price']
+                for ii in range(len(company_stocks)):  # should be in the order we requested, so use index instead of key lookup
+                    company_stocks[ii].currentPrice = data[ii]['price']
                 self.update_shares()
-            for stock in self.stocks:
-                print(stock.ticker)
-                if '^' in stock.ticker:
-                    stock.update_daily()
+            for stock in market_stocks:
+                stock.update_daily()
 
     def update_shares(self):
         """Updates the shares for all of the stocks.

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>365</width>
-    <height>173</height>
+    <height>241</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="spinBoxRefreshRate"/>
+      <widget class="QSpinBox" name="spinBoxRefreshRate">
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -39,6 +43,27 @@
      </item>
      <item>
       <widget class="QComboBox" name="comboBoxGraphColor"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QLabel" name="labelGraphLineWidth">
+       <property name="text">
+        <string>Graph Line Width:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spinBoxGraphLineWidth">
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>10</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -63,6 +88,20 @@
      </item>
      <item>
       <widget class="QSpinBox" name="spinBoxFontSize"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QLabel" name="labelTheme">
+       <property name="text">
+        <string>App Theme:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBoxTheme"/>
      </item>
     </layout>
    </item>

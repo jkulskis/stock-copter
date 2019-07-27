@@ -72,8 +72,10 @@ class HeaderEditorDialog(QtWidgets.QDialog):
     def add_header(self):
         if self.selected_item['parent_index'] is not None:
             index = self.selected_item['parent_index'] + 1
-        else:
+        elif self.selected_item['index'] is not None:
             index = self.selected_item['index'] + 1
+        else:
+            index = len(self.headers)
         expression_creator_dialog = ExpressionCreatorDialog(policy='add_header')
         accepted = expression_creator_dialog.exec_()
         if accepted:

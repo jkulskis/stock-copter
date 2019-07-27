@@ -11,6 +11,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(934, 502)
         MainWindow.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -57,7 +58,7 @@ class Ui_MainWindow(object):
         self.treeWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.treeWidget.setAutoFillBackground(False)
         self.treeWidget.setDragEnabled(False)
-        self.treeWidget.setDragDropMode(QtWidgets.QAbstractItemView.NoDragDrop)
+        self.treeWidget.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         self.treeWidget.setAlternatingRowColors(True)
         self.treeWidget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.treeWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)

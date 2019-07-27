@@ -25,10 +25,10 @@ class Formatter:
                 return '{0}B'.format(round(number/1000000000.0, 2))
             elif abs(number) >= 1000000:
                 return '{0}M'.format(round(number/1000000.0, 2))
-            elif abs(number) >= 10000:
+            elif abs(number) >= 100000:
                 return '{:,}'.format(int(number))
-            elif abs(number) >= 1000:
-                return '{:,}'.format(round(number, 1))
+            elif abs(number) >= 10000:
+                return '{:,.2f}'.format(number)
             elif abs(number) >= 10:
                 return '{:.2f}'.format(number)
             elif abs(number) >= 1:
@@ -44,11 +44,7 @@ class Formatter:
                 else:
                     return '{:.2e}'.format(number)
         else:
-            if abs(number) >= 10000:
-                return int(number)
-            elif abs(number) >= 1000:
-                return round(number, 1)
-            elif abs(number) >= 10:
+            if abs(number) >= 10:
                 return round(number, 2)
             elif abs(number) >= 1:
                 return round(number, 3)
