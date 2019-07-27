@@ -11,6 +11,7 @@ class ExpressionCreatorDialog(QtWidgets.QDialog):
         super(ExpressionCreatorDialog, self).__init__()
         self.ui = Ui_ExpressionCreatorDialog()
         self.ui.setupUi(self)
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.policy = policy
         if self.policy == 'conditional':
             self.last_line_edit_changed = self.ui.lineEditConditional

@@ -8,6 +8,7 @@ class HeaderEditorDialog(QtWidgets.QDialog):
         super(HeaderEditorDialog, self).__init__()
         self.ui = Ui_HeaderEditorDialog()
         self.ui.setupUi(self)
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.headers = headers
         self.populate_tree_widget()
         if len(self.headers): # select the first item on startup if there is one

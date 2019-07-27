@@ -19,6 +19,7 @@ class AddStockDialog(QtWidgets.QDialog):
         super(AddStockDialog, self).__init__()
         self.ui = Ui_AddStockDialog()
         self.ui.setupUi(self)
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.group = group
         self.stocks = stocks
         if stock:

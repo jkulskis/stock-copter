@@ -87,10 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if check['status'] != 0:
                 QtWidgets.QMessageBox.critical(self, 'ERROR', check['message'], QtWidgets.QMessageBox.Ok)
                 sys.exit(-1)
-        except ConnectionError:
-            QtWidgets.QMessageBox.critical(self, 'ERROR', 'WiFi connection is needed to run Stock Copter...exiting', QtWidgets.QMessageBox.Ok)
-            sys.exit(1)
-        except (Timeout, json.JSONDecodeError): # if my site is down
+        except (ConnectionError, json.JSONDecodeError): # if my site is down
             self.version = 0.0
             try:
                 requests.get('https://www.google.com/')

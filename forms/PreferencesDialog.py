@@ -23,6 +23,7 @@ class PreferencesDialog(QtWidgets.QDialog):
         super(PreferencesDialog, self).__init__()
         self.ui = Ui_PreferencesDialog()
         self.ui.setupUi(self)
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.preferences = conf['preferences']
         self.ui.labelError.hide()
         self.add_combo_items()
